@@ -1,7 +1,7 @@
 //! The class names the components render and [`CSS`](crate::CSS) styles. Tests check that
 //! every one has a rule.
 
-use crate::{ButtonStyle, ColorRole, Elevation, Shape, TypeScale};
+use crate::{ButtonStyle, ColorRole, TypeScale};
 
 pub const ICON: &str = "md-icon";
 
@@ -171,29 +171,6 @@ pub const fn surface(role: ColorRole) -> &'static str {
         ColorRole::OutlineVariant => "md-surface-outline-variant",
         ColorRole::Shadow => "md-surface-shadow",
         ColorRole::Scrim => "md-surface-scrim",
-    }
-}
-
-pub const fn shape(shape: Shape) -> &'static str {
-    match shape {
-        Shape::None => "md-shape-none",
-        Shape::ExtraSmall => "md-shape-extra-small",
-        Shape::Small => "md-shape-small",
-        Shape::Medium => "md-shape-medium",
-        Shape::Large => "md-shape-large",
-        Shape::ExtraLarge => "md-shape-extra-large",
-        Shape::Full => "md-shape-full",
-    }
-}
-
-pub const fn elevation(level: Elevation) -> &'static str {
-    match level {
-        Elevation::Level0 => "md-elevation-level0",
-        Elevation::Level1 => "md-elevation-level1",
-        Elevation::Level2 => "md-elevation-level2",
-        Elevation::Level3 => "md-elevation-level3",
-        Elevation::Level4 => "md-elevation-level4",
-        Elevation::Level5 => "md-elevation-level5",
     }
 }
 

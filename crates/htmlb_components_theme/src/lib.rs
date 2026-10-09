@@ -4,9 +4,8 @@
 //! ```
 //! use htmlb_components_baseline::THEME;
 //!
-//! let css: &'static str = THEME.css();
-//! assert!(css.contains("--md-sys-color-primary: #6750a4;"));
-//! assert!(THEME.css_file_name().starts_with("theme-"));
+//! let css = htmlb_components_theme::css();
+//! assert!(css.contains("--md-sys-color-primary: light-dark(#6750a4, #d0bcff);"));
 //! ```
 //!
 //! To change a few roles, start from a baseline scheme:
@@ -20,10 +19,18 @@
 //!     DARK,
 //!     TYPEFACES,
 //! );
-//! assert!(THEME.css().contains("--md-sys-color-primary: #006a6a;"));
+//! assert!(htmlb_components::css::css(&THEME).contains("--md-sys-color-primary: light-dark(#006a6a,"));
 //! ```
 
 use htmlb_components::{Color, Scheme, Theme, Typefaces};
+use std::sync::OnceLock;
+
+static CSS: OnceLock<String> = OnceLock::new();
+
+/// The full baseline theme and component stylesheet, rendered once and retained here.
+pub fn css() -> &'static str {
+    CSS.get_or_init(|| htmlb_components::css::css(&THEME))
+}
 
 /// The baseline theme: [`LIGHT`], [`DARK`] and [`TYPEFACES`].
 pub static THEME: Theme = Theme::new(LIGHT, DARK, TYPEFACES);
@@ -155,36 +162,20 @@ mod tests {
 
     #[test]
     fn css_defines_every_role_in_both_schemes() {
-        let css = THEME.css();
+        let css = css();
         for &role in ColorRole::ALL {
             let property = format!("--md-sys-color-{}:", role.name());
-            assert_eq!(css.matches(&property).count(), 2, "{role:?}");
+            assert_eq!(css.matches(&property).count(), 1, "{role:?}");
         }
         assert_eq!(css.matches('{').count(), css.matches('}').count());
     }
 
     #[test]
-    fn file_name_follows_content() {
-        let red = Theme::new(
-            LIGHT,
-            Scheme {
-                primary: Color::hex(0xff0000),
-                ..DARK
-            },
-            TYPEFACES,
-        );
-        assert_eq!(
-            THEME.css_file_name(),
-            Theme::new(LIGHT, DARK, TYPEFACES).css_file_name()
-        );
-        assert_ne!(THEME.css_file_name(), red.css_file_name());
-    }
-
     /// Every `var()` in the components' stylesheet is defined by it or by the theme's.
     #[test]
     fn every_variable_the_components_use_is_defined() {
         let css = without_comments(CSS);
-        let defined = format!("{}{css}", THEME.css());
+        let defined = format!("{}{css}", htmlb_components::css::css(&THEME));
         let mut rest = css.as_str();
         while let Some(at) = rest.find("var(--") {
             rest = &rest[at + 4..];

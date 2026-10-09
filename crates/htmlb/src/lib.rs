@@ -81,6 +81,7 @@
 mod attrs;
 mod class;
 mod component;
+mod components;
 mod containers;
 mod elements;
 mod escape;
@@ -92,6 +93,7 @@ pub use attrs::{
 };
 pub use class::{ClassList, Classes};
 pub use component::Component;
+pub use components::{color_scheme, script, stylesheet, viewport};
 pub use containers::{ClonedIterHtml, Either, IterHtml, IteratorExt};
 pub use elements::{Child, El, HasChildren, Kind, Tag, Unescaped, kind, tag, *};
 pub use text::{Display, Doctype, Raw, RawStr, display, doctype, raw};
@@ -115,7 +117,6 @@ pub trait IntoHtml: Sized {
     fn len_hint(&self) -> usize {
         Self::MIN_LEN
     }
-
 
     /// Appends the HTML to `buf`. Does not reserve.
     fn write_html(self, buf: &mut String);

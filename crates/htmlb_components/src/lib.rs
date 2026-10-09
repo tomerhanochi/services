@@ -15,14 +15,14 @@
 //! Fixed values are MD3's, from `@material/web` 2.5.0's token files
 //! (`tokens/versions/v0_192`). Colors and typefaces come from a [`Theme`], which this
 //! crate doesn't provide: `htmlb_components_baseline` has MD3's baseline.
-//! [`Theme::css`] turns a theme into CSS custom properties.
+//! [`css::css`] turns a theme into a complete stylesheet with CSS custom properties.
 //!
 //! # Components
 //!
 //! There is no way to pass a component a class, a style, a hex color or a pixel size, so
 //! pages stay consistent with the system. Components render markup with the class names in
-//! [`class`], which [`CSS`] styles. Serve [`CSS`] and the theme's [`css`](Theme::css), and
-//! pass both URLs to [`document`].
+//! [`class`], which [`CSS`] styles. Generate a complete themed stylesheet with
+//! [`css::css`], and pass its URL to [`document`].
 //!
 //! ```
 //! use htmlb::prelude::*;
@@ -47,6 +47,7 @@ pub mod action;
 pub mod class;
 pub mod color;
 mod components;
+pub mod css;
 pub mod elevation;
 pub mod icon;
 pub mod motion;
@@ -63,7 +64,7 @@ pub use elevation::Elevation;
 pub use motion::{Duration, Easing};
 pub use shape::{Corners, Shape};
 pub use state::StateLayer;
-pub use stylesheet::{CSS, CSS_FILE_NAME};
+pub use stylesheet::CSS;
 pub use theme::Theme;
 pub use typography::{TypeScale, TypeStyle, Typeface, Typefaces};
 
