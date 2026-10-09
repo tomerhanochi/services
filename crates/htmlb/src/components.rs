@@ -1,6 +1,6 @@
 //! Common document components with consistent metadata and resource attributes.
 
-use crate::{IntoHtml, prelude::*};
+use crate::{prelude::*, IntoHtml};
 
 /// The standard responsive viewport declaration, including safe-area support.
 pub fn viewport() -> impl IntoHtml {
@@ -15,8 +15,8 @@ pub fn color_scheme() -> impl IntoHtml {
 }
 
 /// A stylesheet link.
-pub fn stylesheet(href: impl AsRef<str>) -> impl IntoHtml {
-    link().rel("stylesheet").href(href.as_ref().to_owned())
+pub fn stylesheet(href: String) -> impl IntoHtml {
+    link().rel("stylesheet").href(href)
 }
 
 /// An external script with a Subresource Integrity SHA tag.
