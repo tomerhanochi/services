@@ -2,10 +2,14 @@ use htmlb::Component;
 use htmlb::prelude::*;
 
 use crate::action::{Action, Actionable, Inert};
-use crate::class::{
-    LIST_ITEM, LIST_ITEM_HEADLINE, LIST_ITEM_LEADING, LIST_ITEM_MAIN, LIST_ITEM_SUPPORTING,
-    LIST_ITEM_TEXT, LIST_ITEM_TRAILING, LIST_ITEM_TRAILING_TEXT,
-};
+const LIST_ITEM: &str = "md-list-item";
+const LIST_ITEM_MAIN: &str = "md-list-item__main";
+const LIST_ITEM_LEADING: &str = "md-list-item__leading";
+const LIST_ITEM_TEXT: &str = "md-list-item__text";
+const LIST_ITEM_HEADLINE: &str = "md-list-item__headline";
+const LIST_ITEM_SUPPORTING: &str = "md-list-item__supporting";
+const LIST_ITEM_TRAILING_TEXT: &str = "md-list-item__trailing-text";
+const LIST_ITEM_TRAILING: &str = "md-list-item__trailing";
 
 /// One row of a [`list`](crate::list). With an action, the whole row (except [`trailing`](Self::trailing))
 /// is the target, which is what a thumb expects on a phone.

@@ -1,9 +1,11 @@
 use htmlb::prelude::*;
 use htmlb::{AttrValue, Component};
 
-use crate::class::{
-    TEXT_FIELD, TEXT_FIELD_ERROR, TEXT_FIELD_INPUT, TEXT_FIELD_LABEL, TEXT_FIELD_SUPPORTING,
-};
+const TEXT_FIELD: &str = "md-text-field";
+const TEXT_FIELD_ERROR: &str = "md-text-field--error";
+const TEXT_FIELD_INPUT: &str = "md-text-field__input";
+const TEXT_FIELD_LABEL: &str = "md-text-field__label";
+const TEXT_FIELD_SUPPORTING: &str = "md-text-field__supporting";
 
 /// An outlined text field whose label floats above the value.
 pub fn text_field<L: IntoHtml, N: AttrValue>(

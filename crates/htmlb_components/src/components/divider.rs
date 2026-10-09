@@ -1,6 +1,6 @@
 use htmlb::prelude::*;
 
-use crate::class::DIVIDER;
+const DIVIDER: &str = "md-divider";
 
 /// A horizontal rule between groups of content.
 pub fn divider() -> impl IntoHtml {

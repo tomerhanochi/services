@@ -1,10 +1,12 @@
 use htmlb::Component;
 use htmlb::prelude::*;
 
-use crate::class::{
-    TOP_APP_BAR, TOP_APP_BAR_ACTIONS, TOP_APP_BAR_HEADLINE, TOP_APP_BAR_NAVIGATION,
-    TOP_APP_BAR_SUBTITLE, TOP_APP_BAR_TITLES,
-};
+const TOP_APP_BAR: &str = "md-top-app-bar";
+const TOP_APP_BAR_NAVIGATION: &str = "md-top-app-bar__navigation";
+const TOP_APP_BAR_TITLES: &str = "md-top-app-bar__titles";
+const TOP_APP_BAR_HEADLINE: &str = "md-top-app-bar__headline";
+const TOP_APP_BAR_SUBTITLE: &str = "md-top-app-bar__subtitle";
+const TOP_APP_BAR_ACTIONS: &str = "md-top-app-bar__actions";
 
 /// The bar at the top of a screen: navigation, a headline, and actions.
 pub fn top_app_bar<H: IntoHtml>(headline: H) -> TopAppBar<H, (), (), ()> {

@@ -1,7 +1,8 @@
 use htmlb::Component;
 use htmlb::prelude::*;
 
-use crate::class::{SCAFFOLD, SCAFFOLD_BODY};
+const SCAFFOLD: &str = "md-scaffold";
+const SCAFFOLD_BODY: &str = "md-scaffold__body";
 
 /// A screen: a top app bar, the body, and optionally a bottom app bar and a snackbar.
 pub fn scaffold<T: IntoHtml, B: IntoHtml>(top_app_bar: T, body: B) -> Scaffold<T, B, (), ()> {

@@ -44,7 +44,6 @@
 //! `button` (which is `htmlb`'s `<button>`).
 
 pub mod action;
-pub mod class;
 pub mod color;
 mod components;
 pub mod css;

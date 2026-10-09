@@ -2,8 +2,9 @@ use htmlb::Component;
 use htmlb::prelude::*;
 
 use crate::action::{Action, Actionable, Inert};
-use crate::class::MENU_ITEM;
 use crate::icon::Icon;
+
+const MENU_ITEM: &str = "md-menu-item";
 
 /// A row in a [`sheet`](crate::sheet) or menu: an icon and a label, with an action.
 pub fn menu_item<I: Icon, L: IntoHtml>(icon: I, label: L) -> MenuItem<I, L, Inert> {

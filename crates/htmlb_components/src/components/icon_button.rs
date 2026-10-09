@@ -2,8 +2,9 @@ use htmlb::prelude::*;
 use htmlb::{AttrValue, Component};
 
 use crate::action::{Action, Actionable, Inert};
-use crate::class::ICON_BUTTON;
 use crate::icon::Icon;
+
+const ICON_BUTTON: &str = "md-icon-button";
 
 /// An icon-only button. `label` is required: it's the accessible name and tooltip.
 pub fn icon_button<I: Icon, L: AttrValue + Clone>(icon: I, label: L) -> IconButton<I, L, Inert> {

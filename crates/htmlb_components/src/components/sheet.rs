@@ -1,7 +1,9 @@
 use htmlb::prelude::*;
 use htmlb::{AttrValue, Component};
 
-use crate::class::{SHEET, SHEET_HANDLE, SHEET_HEADLINE};
+const SHEET: &str = "md-sheet";
+const SHEET_HANDLE: &str = "md-sheet__handle";
+const SHEET_HEADLINE: &str = "md-sheet__headline";
 
 /// A bottom sheet: a popover sliding up from the bottom edge on phones, centered on wider
 /// screens. Open it with an action's [`opens`](crate::Actionable::opens) and the same `id`.

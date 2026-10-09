@@ -2,8 +2,20 @@ use htmlb::Component;
 use htmlb::prelude::*;
 
 use crate::action::{Action, Actionable, Inert};
-use crate::class::{self, BUTTON, BUTTON_LABEL};
 use crate::icon::Icon;
+
+const BUTTON: &str = "md-button";
+const BUTTON_LABEL: &str = "md-button__label";
+
+const fn style_class(style: ButtonStyle) -> &'static str {
+    match style {
+        ButtonStyle::Filled => "md-button-filled",
+        ButtonStyle::Tonal => "md-button-tonal",
+        ButtonStyle::Elevated => "md-button-elevated",
+        ButtonStyle::Outlined => "md-button-outlined",
+        ButtonStyle::Text => "md-button-text",
+    }
+}
 
 /// Emphasis, from highest to lowest: `Filled`, `Tonal`, `Elevated`, `Outlined`, `Text`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -104,7 +116,7 @@ impl<L, I> Actionable for Button<L, I, Inert> {
 impl<L: IntoHtml, I: IntoHtml, A: Action> Component for Button<L, I, A> {
     fn render(self) -> impl IntoHtml {
         self.action.element(
-            (BUTTON, class::button(self.style)),
+            (BUTTON, style_class(self.style)),
             None::<&str>,
             (self.icon, span().class(BUTTON_LABEL).child(self.label)),
         )
