@@ -53,7 +53,6 @@ pub mod icon;
 pub mod motion;
 pub mod shape;
 pub mod state;
-mod stylesheet;
 mod theme;
 pub mod typography;
 
@@ -64,11 +63,10 @@ pub use elevation::Elevation;
 pub use motion::{Duration, Easing};
 pub use shape::{Corners, Shape};
 pub use state::StateLayer;
-pub use stylesheet::CSS;
 pub use theme::Theme;
 pub use typography::{TypeScale, TypeStyle, Typeface, Typefaces};
 
 pub mod prelude {
     pub use crate::components::*;
-    pub use crate::{Actionable, ColorRole, Elevation, Shape, Theme, TypeScale, icon};
+    pub use crate::{icon, Actionable, ColorRole, Elevation, Shape, Theme, TypeScale};
 }

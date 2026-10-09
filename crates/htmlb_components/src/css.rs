@@ -5,12 +5,14 @@ use std::fmt::Write;
 use crate::state::{DISABLED_CONTAINER_OPACITY, DISABLED_CONTENT_OPACITY};
 use crate::{Duration, Easing, Elevation, Shape, StateLayer, Theme, TypeScale, Typeface};
 
+const CSS: &str = include_str!("material.css");
+
 const FALLBACK_FONTS: &str = "system-ui, -apple-system, \"Segoe UI\", sans-serif";
 
 /// Returns a complete stylesheet: the theme tokens followed by the component rules.
 pub fn css(theme: &Theme) -> String {
     let mut css = tokens_css(theme);
-    css.push_str(crate::stylesheet::CSS);
+    css.push_str(CSS);
     css
 }
 
