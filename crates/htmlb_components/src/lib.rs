@@ -13,7 +13,7 @@ pub use action::{Action, Actionable};
 pub use color::{Color, ColorRole, Scheme};
 pub use components::*;
 pub use theme::Theme;
-pub use typography::{TypeScale, TypeStyle, Typeface, Typefaces};
+pub use typography::{TypeScale, Typeface, Typefaces};
 
 pub mod prelude {
     pub use crate::components::*;
