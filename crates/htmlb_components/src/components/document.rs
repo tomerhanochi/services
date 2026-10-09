@@ -1,12 +1,10 @@
 use htmlb::prelude::*;
 use htmlb::{color_scheme, stylesheet, viewport};
 
-/// A whole HTML document. `stylesheets` are URLs for the app's generated theme CSS and
-/// any other stylesheets. The theme also colors the browser's own UI to match.
-pub fn document<B: IntoHtml>(
-    page_title: String,
+pub fn document(
+    page_title: impl IntoHtml,
     stylesheet_href: String,
-    content: B,
+    content: impl IntoHtml,
 ) -> impl IntoHtml {
     (
         doctype(),
