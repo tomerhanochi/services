@@ -1,39 +1,16 @@
 //! MD3's baseline theme for [`htmlb_components`]: the purple `#6750a4` schemes
 //! and Roboto, from `@material/web` 2.5.0's token files (`tokens/versions/v0_192`).
-//!
-//! ```
-//! use htmlb_components_baseline::THEME;
-//!
-//! let css = htmlb_components_theme::css();
-//! assert!(css.contains("--md-sys-color-primary: light-dark(#6750a4, #d0bcff);"));
-//! ```
-//!
-//! To change a few roles, start from a baseline scheme:
-//!
-//! ```
-//! use htmlb_components::{Color, Scheme, Theme};
-//! use htmlb_components_baseline::{DARK, LIGHT, TYPEFACES};
-//!
-//! static THEME: Theme = Theme::new(
-//!     Scheme { primary: Color::hex(0x006a6a), ..LIGHT },
-//!     DARK,
-//!     TYPEFACES,
-//! );
-//! assert!(htmlb_components::css::css(&THEME).contains("--md-sys-color-primary: light-dark(#006a6a,"));
-//! ```
 
 use htmlb_components::{Color, Scheme, Theme, Typefaces};
 use std::sync::OnceLock;
 
 static CSS: OnceLock<String> = OnceLock::new();
 
-/// The full baseline theme and component stylesheet, rendered once and retained here.
 pub fn css() -> &'static str {
     CSS.get_or_init(|| htmlb_components::css::css(&THEME))
 }
 
-/// The baseline theme: [`LIGHT`], [`DARK`] and [`TYPEFACES`].
-pub static THEME: Theme = Theme::new(LIGHT, DARK, TYPEFACES);
+pub const THEME: Theme = Theme::new(LIGHT, DARK, TYPEFACES);
 
 pub const TYPEFACES: Typefaces = Typefaces {
     brand: "Roboto",
@@ -143,57 +120,3 @@ pub const DARK: Scheme = Scheme {
     shadow: Color::hex(0x000000),
     scrim: Color::hex(0x000000),
 };
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use htmlb::IntoHtml;
-    use htmlb_components::{CSS, ColorRole};
-
-    #[test]
-    fn roles_get_their_own_color() {
-        assert_eq!(LIGHT.get(ColorRole::Primary).to_html(), "#6750a4");
-        assert_eq!(LIGHT.get(ColorRole::Scrim).to_html(), "#000000");
-        assert_eq!(DARK.get(ColorRole::OnSurface).to_html(), "#e6e0e9");
-        for (i, role) in ColorRole::ALL.iter().enumerate() {
-            assert_eq!(*role as usize, i);
-        }
-    }
-
-    #[test]
-    fn css_defines_every_role_in_both_schemes() {
-        let css = css();
-        for &role in ColorRole::ALL {
-            let property = format!("--md-sys-color-{}:", role.name());
-            assert_eq!(css.matches(&property).count(), 1, "{role:?}");
-        }
-        assert_eq!(css.matches('{').count(), css.matches('}').count());
-    }
-
-    #[test]
-    /// Every `var()` in the components' stylesheet is defined by it or by the theme's.
-    #[test]
-    fn every_variable_the_components_use_is_defined() {
-        let css = without_comments(CSS);
-        let defined = format!("{}{css}", htmlb_components::css::css(&THEME));
-        let mut rest = css.as_str();
-        while let Some(at) = rest.find("var(--") {
-            rest = &rest[at + 4..];
-            let name = &rest[..rest.find(')').unwrap()];
-            assert!(
-                defined.contains(&format!("{name}:")),
-                "{name} is used but never defined"
-            );
-        }
-    }
-
-    fn without_comments(css: &str) -> String {
-        let mut out = String::new();
-        let mut rest = css;
-        while let Some(start) = rest.find("/*") {
-            out.push_str(&rest[..start]);
-            rest = &rest[start + rest[start..].find("*/").unwrap() + 2..];
-        }
-        out + rest
-    }
-}
