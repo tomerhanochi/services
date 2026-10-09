@@ -1,24 +1,4 @@
-//! The type scale (`md.sys.typescale.*`) and typefaces (`md.ref.typeface.*`).
-
-/// A role in the type scale: five roles, each in three sizes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum TypeScale {
-    DisplayLarge,
-    DisplayMedium,
-    DisplaySmall,
-    HeadlineLarge,
-    HeadlineMedium,
-    HeadlineSmall,
-    TitleLarge,
-    TitleMedium,
-    TitleSmall,
-    BodyLarge,
-    BodyMedium,
-    BodySmall,
-    LabelLarge,
-    LabelMedium,
-    LabelSmall,
-}
+//! Theme-selected typefaces (`md.ref.typeface.*`). Fixed text styles live in CSS.
 
 /// Which of the theme's [`Typefaces`] a style uses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

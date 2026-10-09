@@ -13,9 +13,9 @@ pub use action::{Action, Actionable};
 pub use color::{Color, ColorRole, Scheme};
 pub use components::*;
 pub use theme::Theme;
-pub use typography::{TypeScale, Typeface, Typefaces};
+pub use typography::{Typeface, Typefaces};
 
 pub mod prelude {
     pub use crate::components::*;
-    pub use crate::{icon, Actionable, ColorRole, Theme, TypeScale};
+    pub use crate::{Actionable, ColorRole, Theme, icon};
 }
