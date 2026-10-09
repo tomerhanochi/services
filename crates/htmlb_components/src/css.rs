@@ -2,8 +2,7 @@
 
 use std::fmt::Write;
 
-use crate::state::{DISABLED_CONTAINER_OPACITY, DISABLED_CONTENT_OPACITY};
-use crate::{Duration, Easing, Elevation, Shape, StateLayer, Theme, TypeScale, Typeface};
+use crate::Theme;
 
 const CSS: &str = include_str!("material.css");
 
@@ -30,84 +29,11 @@ fn tokens_css(theme: &Theme) -> String {
     };
     css.push_str(":root {\n  color-scheme: light dark;\n");
     colors(&mut css);
-    for (typeface, name) in [(Typeface::Brand, "brand"), (Typeface::Plain, "plain")] {
-        let _ = writeln!(
-            css,
-            "  --md-ref-typeface-{name}: {}, {FALLBACK_FONTS};",
-            theme.typefaces.get(typeface)
-        );
-    }
-    for &scale in TypeScale::ALL {
-        let (name, style) = (scale.name(), scale.style());
-        let font = match style.typeface {
-            Typeface::Brand => "var(--md-ref-typeface-brand)",
-            Typeface::Plain => "var(--md-ref-typeface-plain)",
-        };
-        let _ = writeln!(css, "  --md-sys-typescale-{name}-font: {font};");
-        let _ = writeln!(css, "  --md-sys-typescale-{name}-weight: {};", style.weight);
-        let _ = writeln!(
-            css,
-            "  --md-sys-typescale-{name}-size: {}rem;",
-            style.size_rem
-        );
-        let _ = writeln!(
-            css,
-            "  --md-sys-typescale-{name}-line-height: {}rem;",
-            style.line_height_rem
-        );
-        let _ = writeln!(
-            css,
-            "  --md-sys-typescale-{name}-tracking: {}rem;",
-            style.tracking_rem
-        );
-    }
-    for &shape in Shape::ALL {
-        let _ = writeln!(
-            css,
-            "  --md-sys-shape-corner-{}: {}px;",
-            shape.name(),
-            shape.radius_px()
-        );
-    }
-    for &level in Elevation::ALL {
-        let _ = writeln!(
-            css,
-            "  --md-sys-elevation-shadow-{}: {};",
-            level.name(),
-            level.shadow()
-        );
-    }
-    for &state in StateLayer::ALL {
-        let _ = writeln!(
-            css,
-            "  --md-sys-state-{}-state-layer-opacity: {};",
-            state.name(),
-            state.opacity()
-        );
-    }
-    let _ = writeln!(
-        css,
-        "  --md-sys-state-disabled-content-opacity: {DISABLED_CONTENT_OPACITY};"
-    );
-    let _ = writeln!(
-        css,
-        "  --md-sys-state-disabled-container-opacity: {DISABLED_CONTAINER_OPACITY};"
-    );
-    for &easing in Easing::ALL {
-        let [x1, y1, x2, y2] = easing.cubic_bezier();
-        let _ = writeln!(
-            css,
-            "  --md-sys-motion-easing-{}: cubic-bezier({x1}, {y1}, {x2}, {y2});",
-            easing.name()
-        );
-    }
-    for &duration in Duration::ALL {
-        let _ = writeln!(
-            css,
-            "  --md-sys-motion-duration-{}: {}ms;",
-            duration.name(),
-            duration.millis()
-        );
+    for (name, font) in [
+        ("brand", theme.typefaces.brand),
+        ("plain", theme.typefaces.plain),
+    ] {
+        let _ = writeln!(css, "  --md-ref-typeface-{name}: {font}, {FALLBACK_FONTS};");
     }
     css.push_str("}\n");
     css
