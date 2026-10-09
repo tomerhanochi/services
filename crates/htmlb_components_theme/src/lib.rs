@@ -2,13 +2,6 @@
 //! and Roboto, from `@material/web` 2.5.0's token files (`tokens/versions/v0_192`).
 
 use htmlb_components::{Color, Scheme, Theme, Typefaces};
-use std::sync::OnceLock;
-
-static CSS: OnceLock<String> = OnceLock::new();
-
-pub fn css() -> &'static str {
-    CSS.get_or_init(|| htmlb_components::css::css(&THEME))
-}
 
 pub const THEME: Theme = Theme::new(LIGHT, DARK, TYPEFACES);
 
