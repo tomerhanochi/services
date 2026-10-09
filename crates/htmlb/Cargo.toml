@@ -1,0 +1,10 @@
+[package]
+name = "htmlb"
+version = "0.1.0"
+description = "Type-checked HTML builder for server-side rendering, with compile-time size estimates."
+
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+askama_escape = "0.16"

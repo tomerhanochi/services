@@ -1,0 +1,12 @@
+[package]
+name = "htmlb_components_theme"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Material Design's baseline theme."
+
+[dependencies]
+htmlb_components = { path = "../htmlb_components" }
+
+[dev-dependencies]
+htmlb = { path = "../htmlb" }
