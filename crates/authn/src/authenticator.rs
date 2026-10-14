@@ -1,5 +1,8 @@
-use crate::{AuthOutcome, Authenticate, ExtractCredentials, VerifyCredentials, authenticate::AuthError};
+use std::error::Error;
 
+use crate::{AuthOutcome, Authenticate, Either, ExtractCredentials, VerifyCredentials};
+
+#[derive(Debug, Clone)]
 pub struct Authenticator<E, V> {
     extractor: E,
     verifier: V,
@@ -16,22 +19,29 @@ impl<E: ExtractCredentials, V: VerifyCredentials<Credentials = E::Credentials>>
     }
 }
 
-impl<E: ExtractCredentials, V: VerifyCredentials<Credentials = E::Credentials>> Authenticate for Authenticator<E, V>
-where AuthError: From<E::Error> + From<V::Error>{
+impl<E, V> Authenticate for Authenticator<E, V>
+where
+    E: ExtractCredentials + Sync,
+    E::Context: Sync,
+    E::Credentials: Send,
+    E::Error: Error + Send,
+    V: VerifyCredentials<Credentials = E::Credentials> + Sync,
+    V::Error: Error + Send,
+{
     type Context = E::Context;
     type Identity = V::Identity;
+    type Error = Either<E::Error, V::Error>;
 
     async fn authenticate(
         &self,
         ctx: &Self::Context,
-    ) -> Result<AuthOutcome<Self::Identity>, AuthError> {
-        let Some(creds) = self.extractor.extract(ctx)? else {
-            return Ok(AuthOutcome::NotApplicable)
+    ) -> Result<AuthOutcome<Self::Identity>, Self::Error> {
+        let Some(creds) = self.extractor.extract(ctx).map_err(Either::Left)? else {
+            return Ok(AuthOutcome::NotApplicable);
         };
-        let Some(identity) = self.verifier.verify(&creds).await? else {
-            return Ok(AuthOutcome::Rejected)
+        let Some(identity) = self.verifier.verify(&creds).await.map_err(Either::Right)? else {
+            return Ok(AuthOutcome::Rejected);
         };
         Ok(AuthOutcome::Authenticated(identity))
     }
 }
-

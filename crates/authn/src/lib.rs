@@ -1,9 +1,12 @@
 mod authenticate;
 mod authenticator;
 mod chain;
+mod either;
 mod extract_credentials;
 mod option;
 mod verify_credentials;
+
+pub(crate) use either::Either;
 
 pub use authenticate::{AuthOutcome, Authenticate};
 pub use authenticator::Authenticator;
