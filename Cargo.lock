@@ -27,7 +27,6 @@ version = "0.1.0"
 dependencies = [
  "authn",
  "axum",
- "tokio",
 ]
 
 [[package]]
@@ -37,6 +36,15 @@ version = "0.1.0"
 [[package]]
 name = "authn-token"
 version = "0.1.0"
+
+[[package]]
+name = "authn-token-axum"
+version = "0.1.0"
+dependencies = [
+ "authn",
+ "authn-token",
+ "axum",
+]
 
 [[package]]
 name = "axum"

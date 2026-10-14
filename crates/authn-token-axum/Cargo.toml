@@ -1,0 +1,11 @@
+[package]
+name = "authn-token-axum"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+authn = { path = "../authn" }
+authn-token = { path = "../authn-token" }
+
+axum = { workspace = true }
