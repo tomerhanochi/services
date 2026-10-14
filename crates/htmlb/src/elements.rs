@@ -3,8 +3,8 @@
 use std::marker::PhantomData;
 
 use crate::IntoHtml;
-use crate::class::{ClassList, Classes};
 use crate::attrs::{Attr, AttrValue, Attribute, BoolAttr, DynAttr, Typed, enums::*, keys as attr};
+use crate::class::{ClassList, Classes};
 
 /// What an element does with children.
 pub mod kind {
@@ -101,14 +101,22 @@ pub struct El<T, A, C> {
 impl<T, A, C> El<T, A, C> {
     #[inline]
     fn push_attr<X>(self, attr: X) -> El<T, (A, X), C> {
-        El { attrs: (self.attrs, attr), children: self.children, tag: PhantomData }
+        El {
+            attrs: (self.attrs, attr),
+            children: self.children,
+            tag: PhantomData,
+        }
     }
 }
 
 impl<T: Tag> El<T, (), ()> {
     #[inline]
     fn new() -> Self {
-        El { attrs: (), children: (), tag: PhantomData }
+        El {
+            attrs: (),
+            children: (),
+            tag: PhantomData,
+        }
     }
 }
 
@@ -120,7 +128,11 @@ impl<T: Tag, A, C> El<T, A, C> {
     where
         T::Kind: HasChildren,
     {
-        El { attrs: self.attrs, children: (self.children, child.into_child()), tag: PhantomData }
+        El {
+            attrs: self.attrs,
+            children: (self.children, child.into_child()),
+            tag: PhantomData,
+        }
     }
 
     /// Any attribute by name: `data-*`, custom elements, anything not modelled here.
@@ -141,9 +153,12 @@ impl<T: Tag, A: Attribute, C: IntoHtml> IntoHtml for El<T, A, C> {
     #[inline]
     fn len_hint(&self) -> usize {
         let open = T::OPEN.len() + 1 + self.attrs.attrs_len_hint();
-        if <T::Kind as Kind>::VOID { open } else { open + self.children.len_hint() + T::CLOSE.len() }
+        if <T::Kind as Kind>::VOID {
+            open
+        } else {
+            open + self.children.len_hint() + T::CLOSE.len()
+        }
     }
-
 
     #[inline]
     fn write_html(self, buf: &mut String) {

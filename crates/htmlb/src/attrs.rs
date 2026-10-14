@@ -126,11 +126,7 @@ impl<K: AttrKey> Attribute for BoolAttr<K> {
     const ATTRS_MIN_LEN: usize = 0;
     #[inline]
     fn attrs_len_hint(&self) -> usize {
-        if self.on {
-            K::BARE.len()
-        } else {
-            0
-        }
+        if self.on { K::BARE.len() } else { 0 }
     }
     #[inline]
     fn write_attrs(self, buf: &mut String) {
@@ -251,11 +247,7 @@ impl AttrValue for bool {
     const VALUE_MIN_LEN: usize = 4;
     #[inline]
     fn value_len_hint(&self) -> usize {
-        if *self {
-            4
-        } else {
-            5
-        }
+        if *self { 4 } else { 5 }
     }
     #[inline]
     fn write_value(self, buf: &mut String) {

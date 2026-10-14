@@ -1,6 +1,6 @@
 //! Common document components with consistent metadata and resource attributes.
 
-use crate::{prelude::*, IntoHtml};
+use crate::{IntoHtml, prelude::*};
 
 /// The standard responsive viewport declaration, including safe-area support.
 pub fn viewport() -> impl IntoHtml {

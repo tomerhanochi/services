@@ -87,7 +87,11 @@ pub enum Either<L, R> {
 }
 
 impl<L: IntoHtml, R: IntoHtml> IntoHtml for Either<L, R> {
-    const MIN_LEN: usize = if L::MIN_LEN < R::MIN_LEN { L::MIN_LEN } else { R::MIN_LEN };
+    const MIN_LEN: usize = if L::MIN_LEN < R::MIN_LEN {
+        L::MIN_LEN
+    } else {
+        R::MIN_LEN
+    };
     #[inline]
     fn len_hint(&self) -> usize {
         match self {
