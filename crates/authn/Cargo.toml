@@ -1,0 +1,9 @@
+[package]
+name = "authn"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Authentication ports: who is making a request, established from implementation-specific credentials."
+
+[dependencies]
+serde = { workspace = true }
