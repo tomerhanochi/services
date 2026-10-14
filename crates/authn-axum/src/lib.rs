@@ -1,14 +1,28 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use authn::{AuthOutcome, Authenticate};
+use axum::{extract::{FromRef, FromRequestParts}, http::{StatusCode, request::Parts}};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub struct Authn<A: Authenticate>(A::Identity);
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl<S, A> FromRequestParts<S> for Authn<A>
+where
+    S: Send + Sync,
+    A: Authenticate<Context = Parts> + FromRef<S> + Send + Sync,
+{
+    type Rejection = StatusCode;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        let authenticator = A::from_ref(state);
+
+        match authenticator.authenticate(parts).await {
+            Ok(outcome) => match outcome {
+                AuthOutcome::Authenticated(identity) => Ok(Self(identity)),
+                AuthOutcome::NotApplicable => Err(StatusCode::UNAUTHORIZED),
+                AuthOutcome::Rejected => Err(StatusCode::UNAUTHORIZED),
+            },
+            Err(err) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
