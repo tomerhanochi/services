@@ -24,9 +24,9 @@ where
     E: ExtractCredentials + Sync,
     E::Context: Sync,
     E::Credentials: Send,
-    E::Error: Error + Send,
+    E::Error: Error + Send + 'static,
     V: VerifyCredentials<Credentials = E::Credentials> + Sync,
-    V::Error: Error + Send,
+    V::Error: Error + Send + 'static,
 {
     type Context = E::Context;
     type Identity = V::Identity;

@@ -15,4 +15,11 @@ impl<A: Display, B: Display> Display for Either<A, B> {
     }
 }
 
-impl<A: Error, B: Error> Error for Either<A, B> {}
+impl<A: Error + 'static, B: Error + 'static> Error for Either<A, B> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Left(error) => Some(error),
+            Self::Right(error) => Some(error),
+        }
+    }
+}

@@ -1,24 +1,20 @@
+//! Bearer token extraction for Axum request parts.
+
+use std::convert::Infallible;
+
 use authn::ExtractCredentials;
 use authn_token::Token;
-use axum::http::{header::AUTHORIZATION, request::Parts};
+use axum::http::request::Parts;
 
+#[derive(Debug, Clone, Copy, Default)]
 pub struct BearerTokenExtractor;
-
-pub enum Error {}
 
 impl ExtractCredentials for BearerTokenExtractor {
     type Context = Parts;
     type Credentials = Token;
-    type Error = Error;
+    type Error = Infallible;
 
     fn extract(&self, ctx: &Self::Context) -> Result<Option<Self::Credentials>, Self::Error> {
-        let Some(authorization) = ctx.headers.get(AUTHORIZATION) else {
-            return Ok(None);
-        };
-
-        match authorization.as_bytes().strip_prefix(b"Bearer ") {
-            Some(token) => Ok(Some(Token)),
-            None => Ok(None),
-        }
+        Ok(authn_axum::authorization(ctx, "Bearer").map(Token::new))
     }
 }

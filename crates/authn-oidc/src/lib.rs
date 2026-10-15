@@ -1,14 +1,9 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! OIDC authorization-code login using `openidconnect`, followed by opaque sessions.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod client;
+mod error;
+mod session;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use client::{LoginRequest, OidcClient, OidcConfig};
+pub use error::OidcError;
+pub use session::{OidcIdentity, OidcVerifier, SessionId, Sessions};

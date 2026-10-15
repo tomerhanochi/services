@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{error::Error, fmt};
 
 use authn::{AuthOutcome, Authenticate};
 use axum::{
@@ -9,6 +9,34 @@ use axum::{
 
 /// An authenticated identity, obtained using an authenticator from application state.
 pub struct Authn<A: Authenticate>(pub A::Identity);
+
+/// Extracts one Authorization credential for `scheme` (case insensitive).
+/// A matching but malformed or ambiguous header returns an empty credential,
+/// allowing the verifier to reject it rather than treating it as absent.
+pub fn authorization<'a>(parts: &'a Parts, scheme: &str) -> Option<&'a [u8]> {
+    let values = parts.headers.get_all(axum::http::header::AUTHORIZATION);
+    let count = values.iter().count();
+    for value in values {
+        let bytes = value.as_bytes();
+        let end = bytes
+            .iter()
+            .position(u8::is_ascii_whitespace)
+            .unwrap_or(bytes.len());
+        if !bytes[..end].eq_ignore_ascii_case(scheme.as_bytes()) {
+            continue;
+        }
+        if count != 1 || bytes.get(end) != Some(&b' ') {
+            return Some(&[]);
+        }
+        let credential = &bytes[end..];
+        let start = credential
+            .iter()
+            .position(|byte| *byte != b' ')
+            .unwrap_or(credential.len());
+        return Some(&credential[start..]);
+    }
+    None
+}
 
 /// Authentication rejection with the original operational error available for diagnostics.
 #[derive(Debug)]
@@ -31,6 +59,15 @@ impl<E> IntoResponse for AuthnRejection<E> {
         match self {
             Self::Unauthorized => StatusCode::UNAUTHORIZED.into_response(),
             Self::Authentication(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
+    }
+}
+
+impl<E: Error + 'static> Error for AuthnRejection<E> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Unauthorized => None,
+            Self::Authentication(error) => Some(error),
         }
     }
 }

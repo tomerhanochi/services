@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::fmt::Debug;
 
 use crate::{AuthOutcome, Authenticate, Either};
 
@@ -12,9 +11,9 @@ where
     A: Authenticate + Sync,
     A::Context: Sync,
     A::Identity: Send,
-    A::Error: Error + Send,
+    A::Error: Error + Send + 'static,
     B: Authenticate<Context = A::Context, Identity = A::Identity> + Sync,
-    B::Error: Error + Send,
+    B::Error: Error + Send + 'static,
 {
     type Context = A::Context;
     type Identity = A::Identity;

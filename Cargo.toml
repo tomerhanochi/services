@@ -12,3 +12,6 @@ publish = false
 axum = "0.8.9"
 tokio = "1.53.2"
 serde = { version = "1", features = ["derive"] }
+base64 = "0.22"
+sha2 = "0.10"
+subtle = "2.6"

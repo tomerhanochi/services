@@ -1,0 +1,12 @@
+[package]
+name = "authn-static-axum"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+authn = { path = "../authn" }
+authn-axum = { path = "../authn-axum" }
+authn-static = { path = "../authn-static" }
+axum = { workspace = true }
+base64 = { workspace = true }

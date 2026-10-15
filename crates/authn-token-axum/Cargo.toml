@@ -6,6 +6,7 @@ publish.workspace = true
 
 [dependencies]
 authn = { path = "../authn" }
+authn-axum = { path = "../authn-axum" }
 authn-token = { path = "../authn-token" }
 
 axum = { workspace = true }
