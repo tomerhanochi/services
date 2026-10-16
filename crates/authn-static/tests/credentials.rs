@@ -3,8 +3,8 @@ use authn_static::prelude::*;
 #[test]
 fn basic_parsing_preserves_password_colons_and_unicode() {
     let credentials = BasicCredentials::parse("admin:päss:word").unwrap();
-    assert_eq!(credentials.username(), "admin");
-    assert_eq!(credentials.password(), "päss:word");
+    assert_eq!(credentials.username().as_str(), "admin");
+    assert_eq!(credentials.password().expose_secret(), "päss:word");
     assert!(!format!("{credentials:?}").contains("päss"));
 }
 

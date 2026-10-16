@@ -1,148 +1,199 @@
 # File server authentication
 
-The composition authenticates requests in this order:
+Requests try HTTP Basic, an OIDC session cookie, then an API bearer token. Absent
+credentials allow the next mechanism; present but invalid credentials stop the
+chain. Every mechanism returns `authn_identity::prelude::Identity`, containing
+`User { id: UserId }` or `Machine { id: MachineId }`. The identity does not expose
+the authentication method. Basic and OIDC can resolve to the same local user;
+a token's store may return either a user or a machine.
 
-```rust
-type StaticAuthenticator = Authenticator<BasicAuthExtractor, StaticVerifier<Identity>>;
-type OidcAuthenticator = Authenticator<SessionCookieExtractor, OidcVerifier<Identity>>;
-type TokenAuthenticator<S> = Authenticator<BearerTokenExtractor, TokenVerifier<S>>;
-type AppAuthenticator<S> = (
-    StaticAuthenticator,
-    Option<OidcAuthenticator>,
-    Option<TokenAuthenticator<S>>,
-);
-```
+Import public APIs through each crate's inline `prelude` module. `authn` remains
+generic, so Axum still extracts `Authn<A>(A::Identity)`.
 
-`S` is your token store. Every mechanism returns the same `Identity` enum, which
-distinguishes the break-glass account, an OIDC identity, and an API token identity.
-The configured Basic account produces `Identity::BreakGlass`.
-Authorization of OIDC users and API token permissions belongs to the file server.
-
-## Configuration and Axum
-
-Import each authentication crate's public API with `use crate_name::prelude::*`,
-including `use file_server_authn::prelude::*` for the composition API.
-Constructors parse untrusted configuration: `Username::new`, `Password::new`,
-`Token::new`, and `OidcConfig::new` return `Result`. OIDC configuration stores
-HTTPS issuer/callback URL types, a nonempty client ID, and positive lifetimes.
-Use `PositiveDuration::new` to change a lifetime, `ClientSecret::new` for the
-optional client secret, and `Scope::new` for additional scopes. Set a redirect
-with `SuccessPath::new`, which permits local absolute paths.
+## Configuration
 
 ```rust,ignore
+use authn_identity::prelude::*;
+use authn_oidc::prelude::*;
+use authn_static::prelude::*;
+use authn_static_directory::prelude::*;
+use file_server_authn::prelude::*;
+use cap_std::{fs::Dir, ambient_authority};
+
+let client = OidcConfig::new(
+    "https://issuer.example",
+    "client-id",
+    "https://files.example/auth/callback",
+)?;
+let mut users = OidcUsers::default();
+users.insert(&client.issuer, "provider-subject", UserId::new("alice")?);
+
 let config = AuthConfig {
     r#static: StaticAuthConfig {
-        username: Username::new(admin_username)?,
-        password: Password::new(admin_password)?,
+        store: DirectoryStore::new(Dir::open_ambient_dir(
+            "/run/secrets/file-users", ambient_authority(),
+        )?),
     },
-    oidc: Some(OidcAuthConfig::new(oidc_client_config)),
-    token: Some(TokenAuthConfig { store: your_database_store }),
+    oidc: Some(OidcAuthConfig::new(client, users)),
+    token: Some(TokenAuthConfig { store: your_token_store }),
 };
-
-// Discovery happens here. The session verifier and login routes share sessions.
 let setup = configure(&config).await?;
 let app = Router::new()
     .route("/", get(handler))
     .nest("/auth", setup.routes())
     .with_state(setup.authenticator);
 
-async fn handler(Authn(identity): Authn<AppAuthenticator<YourStore>>) -> String {
+async fn handler(Authn(identity): Authn<AppAuthenticator<YourTokenStore>>) -> String {
     format!("{identity:?}")
 }
 ```
 
-`authenticator(&config)` also builds just the request authenticator synchronously,
-without discovery. If used with a separately initialized `OidcClient`, pass the
-same `config.oidc.sessions` to that client. Creating an independent session store
-for the login routes would make their cookies unusable by the request verifier.
-`None` disables OIDC or API tokens. Basic remains available independently of the
-provider and token database.
+`AuthConfig<T, S = DirectoryStore, O = OidcUsers>` and
+`AppAuthenticator<T, S = DirectoryStore, O = OidcUsers>` support custom token,
+static-account, and OIDC identity stores. Stores must be cheaply cloneable or
+shared through `Arc`, because Axum obtains an authenticator from application
+state per request.
+
+`authenticator(&config)` constructs just the request authenticator synchronously
+and infallibly. `configure(&config).await` also discovers the OIDC provider and
+builds login routes sharing the configured sessions. `None` disables OIDC or
+bearer authentication. Basic uses the configured store independently of them.
+
+## Mounted static accounts
+
+`authn-static` provides `StaticStore`, `StaticAccount<I>`, and
+`StaticVerifier<S>`. A store looks up a parsed `Username`, returning its identity
+and a parsed `PasswordHash`, or `None` for unknown or disabled users. The account
+constructor accepts only a secure hash:
+
+```rust,ignore
+let hash = PasswordHash::new(encoded_phc_hash)?;
+let account = StaticAccount::new(hash, identity);
+```
+
+`PasswordHash` accepts Argon2id v19 PHC strings with at least 19 MiB memory,
+two iterations, a 16-byte salt, and a 32-byte output. It rejects plaintext,
+unsupported algorithms, malformed encodings, and hashes below these minimums.
+Generate hashes with a fresh random salt per account before provisioning them.
+Hash verification runs on a blocking worker. Wrong passwords reject
+authentication; store, hash-verification, and worker failures preserve their
+source through `Either` and `PasswordVerificationError`.
+
+`authn-static-directory` supplies `DirectoryStore`, which accepts an already-open
+`cap_std::fs::Dir`. Opening an ambient path is the application's responsibility;
+the store retains only the directory capability. Each filename identifies a local
+`UserId`, and its contents must be an Argon2id PHC hash:
+
+```text
+/run/secrets/file-users/
+    alice       # contents: $argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>
+    bob         # contents: another independently salted Argon2id PHC hash
+```
+
+The store opens and reads each file through `Dir` on a blocking worker for every
+lookup. It follows Kubernetes' projected symlinks within the granted directory;
+cap-std enforces confinement during filesystem operations. No canonicalization
+or preflight filesystem metadata checks precede the open. Errors from opening
+and reading are handled directly. The capability continues referring to the
+same directory if its ambient path is renamed or replaced.
+
+Usernames must be single filenames containing ASCII letters, digits, `-`, `_`,
+or `.`, at most 255 bytes long; `.` and names starting with `..` are excluded.
+Missing users reject authentication. Read failures and invalid hash files are
+operational errors. Hash files must be UTF-8, at most 1 KiB long, and may have a
+single trailing LF or CRLF line ending. No other whitespace is trimmed.
+
+A Kubernetes Secret can supply multiple users:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: file-users
+type: Opaque
+stringData:
+  alice: "$argon2id$v=19$m=19456,t=2,p=1$<alice-salt>$<alice-hash>"
+  bob: "$argon2id$v=19$m=19456,t=2,p=1$<bob-salt>$<bob-hash>"
+```
+
+Replace the hash placeholders with complete, independently salted PHC strings.
+Mount the whole Secret directory read-only:
+
+```yaml
+volumes:
+  - name: file-users
+    secret:
+      secretName: file-users
+containers:
+  - name: file-server
+    # ...
+    env:
+      - name: STATIC_AUTH_DIRECTORY
+        value: /run/secrets/file-users
+    volumeMounts:
+      - name: file-users
+        mountPath: /run/secrets/file-users
+        readOnly: true
+```
+
+Kubernetes propagates Secret updates eventually. Individual `subPath` mounts do
+not receive those updates; see the [Kubernetes Secret documentation](https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-files-from-a-pod).
 
 ## API token store
 
-Implement `authn_token::prelude::TokenStore`. It receives a `TokenDigest` (SHA-256), not the
-raw token, and returns `Result<Option<Identity>, YourError>`. Return `None` for
-unknown, expired, disabled, or revoked tokens; return `Err` when the store cannot
-perform the lookup. Store only digests of cryptographically random API tokens.
-`Token::generate()` creates a random token; persist its `digest()` and return the
-secret to its owner once. `Token::new(secret)?.digest()` supports provisioning
-existing tokens.
+Implement `authn_token::prelude::TokenStore` with `type Identity = Identity` from
+`authn-identity`. Lookups receive `TokenDigest`, not the raw token. Return only
+active, unexpired, unrevoked principals; unknown tokens return `None`, and store
+failures return `Err`. `Arc<Store>` is supported.
 
-The store may use a database, remote service, or any other persistence mechanism.
-`TokenVerifier` is generic over the store and preserves its concrete error type.
-`Arc<Store>` is supported. Stores must be cheaply cloneable or shared because
-Axum obtains an authenticator from state for each request.
+`Token::generate()` creates a random token. Persist its digest and expose the
+secret to its owner once. `Token::new(secret)?.digest()` parses existing tokens.
+The example's in-memory token store should be replaced with a persistent store.
 
-The example server contains a small in-memory store to demonstrate the port;
-replace it with your persistent implementation.
+## OIDC identity mapping
 
-## OIDC
+`OidcIdentity` contains verified provider claims and remains internal to OIDC
+resolution. `OidcIdentityStore` maps those claims to the shared application
+identity, allowing an asynchronous user database lookup. Unknown or disabled
+users return `None`; lookup failures remain typed errors. `Arc<Store>` is
+supported. The supplied `OidcUsers` stores explicit `(issuer, subject) -> UserId`
+mappings; email does not identify an account.
 
-OIDC login uses the [openidconnect library](https://docs.rs/openidconnect/4.0.1/openidconnect/)
-for discovery, authorization-code exchange with PKCE, and signed ID token verification.
-The callback checks browser-bound state, nonce, issuer, audience, expiry, and the
-access-token hash when present. A login transaction is consumed once. Missing
-signing keys trigger one provider refresh and verification retry.
+OIDC login uses authorization-code exchange with PKCE. Token verification checks
+nonce, issuer, audience, expiry, signature, and the access-token hash when
+present. Browser-bound state is checked, and login transactions are single-use.
+Missing signing keys trigger one provider refresh and retry.
 
-With the routes nested under `/auth`, configure the provider's redirect URI as
-`https://your-host/auth/callback`. `/auth/login` starts login, `/auth/callback`
-issues the session cookie, and POST `/auth/logout` revokes the session and clears
-the cookies. The success redirect defaults to `/` and must be a local path.
+When nested under `/auth`, `/auth/login` starts login, `/auth/callback` issues a
+session, and POST `/auth/logout` revokes it. Both cookies use `Secure`,
+`HttpOnly`, `SameSite=Lax`, and `Path=/`, with no `Domain`. Sessions are opaque,
+process-local, shared by clones, and bounded to 10,000; pending logins are bounded
+to 1,024. A restart invalidates both. Session expiry is capped by the configured
+lifetime and ID token expiry. Multiple replicas need a shared session backend.
 
-The cookie holds a random opaque session ID, never an ID/access token or identity.
-Both the session and login cookies use `Secure`, `HttpOnly`, `SameSite=Lax`, and
-`Path=/`, with no `Domain`. The default session cookie is `__Host-oidc-session`.
-Change the cookie name with `CookieSettings::new(...)`.
+Issuer, provider endpoints, and callback must use HTTPS. A reverse proxy may
+terminate HTTPS. Use `CookieSettings::new` for a custom cookie name,
+`PositiveDuration::new` for lifetimes, and `SuccessPath::new` for a local success
+redirect. Cookie-authenticated state-changing application routes need CSRF
+protection.
 
-Session expiry is capped by both `session_ttl` and the ID token's expiry. Sessions
-are process-local, shared by clones, bounded to 10,000 active sessions, and removed
-when expired. Pending logins expire and are bounded to 1,024 transactions. A restart
-invalidates both. Multiple replicas need a shared session/login backend; the
-current `Sessions` implementation is intended for a single process.
+## Failures
 
-Issuer, provider endpoints, and callback must use HTTPS. A reverse proxy can
-terminate HTTPS for the Axum application. Application routes that mutate state
-using cookie authentication still need their own CSRF protection.
+Invalid, malformed, duplicated, expired, or unmapped credentials produce a 401
+and stop fallback. Operational failures produce a 500 with the original error
+retained through `Either` and `AuthnRejection`. Default HTTP responses do not
+expose internal error details. Credential types redact secrets in `Debug` output.
 
-## Precedence and failures
+## Example
 
-| Request credentials | Result |
-| --- | --- |
-| Valid Basic account, with or without an OIDC cookie | Break-glass identity |
-| Invalid/malformed Basic, even with a valid OIDC cookie | Rejected; 401 |
-| Valid OIDC cookie and Bearer token | OIDC identity |
-| Invalid/expired OIDC cookie and valid Bearer token | Rejected; 401 |
-| Bearer token with no OIDC cookie | Token store lookup |
-| Bearer token while OIDC is disabled | Token store lookup, ignoring OIDC cookies |
-| No applicable credentials | 401 |
-| Token store unavailable | 500; typed source retained |
-
-Each extractor distinguishes its transport: Basic, Bearer, or the configured
-session cookie. Extractors return `Extracted::Absent`, `Extracted::Malformed`, or
-`Extracted::Present(parsed_credentials)`. Malformed input stops authentication
-before verification. Duplicate matching Authorization
-headers/cookies are rejected. Header scheme matching is case insensitive.
-
-`Either` preserves which extraction, verification, or chain branch failed, and
-implements `Error::source`. `AuthnRejection` retains the error when captured as an
-extractor result. Default HTTP responses contain no internal error details.
-
-The static verifier compares fixed-length credential digests in constant time.
-This avoids comparisons that return early on a matching prefix. It does not turn
-the configured plaintext password into a password database hash: configuration
-must keep the password secret. Credential types redact secrets in `Debug` output.
-Basic decoding follows the username/first-colon/password format from
-[RFC 7617](https://www.rfc-editor.org/rfc/rfc7617.html).
-
-## Run the example
-
-Set `ADMIN_USERNAME` and `ADMIN_PASSWORD`, then run:
+Set `STATIC_AUTH_DIRECTORY` to the mounted password-hash directory, then run:
 
 ```sh
 cargo run -p file_server_authn --example server
 ```
 
-The server listens on `127.0.0.1:3000`. Set `API_TOKEN` to enable its example token
-store. Set `OIDC_ISSUER`, `OIDC_CLIENT_ID`, and `OIDC_REDIRECT_URI` to enable OIDC;
-`OIDC_CLIENT_SECRET` is optional for a public client. Serve it behind HTTPS for
-OIDC cookies. The example identifies callers; it does not serve files.
+The server listens on `127.0.0.1:3000`. Set `API_TOKEN` to enable its example
+machine token. To enable OIDC, set `OIDC_ISSUER`, `OIDC_CLIENT_ID`,
+`OIDC_REDIRECT_URI`, `OIDC_SUBJECT`, and `OIDC_USER_ID`. The latter two explicitly
+map one provider subject to a local user; use an identity store for larger user
+populations. `OIDC_CLIENT_SECRET` is optional for public clients.

@@ -1,0 +1,11 @@
+[package]
+name = "authn-identity"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = "1"

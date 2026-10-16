@@ -5,6 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+authn-identity = { path = "../authn-identity" }
 authn = { path = "../authn" }
 openidconnect = { version = "4.0", default-features = false, features = ["reqwest", "rustls-tls"] }
 base64 = { workspace = true }

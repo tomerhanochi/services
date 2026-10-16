@@ -1,43 +1,39 @@
+use crate::config::AuthConfig;
 use authn::prelude::Authenticator;
-use authn_oidc::prelude::OidcVerifier;
+use authn_identity::prelude::Identity;
+use authn_oidc::prelude::{OidcIdentityStore, OidcUsers, OidcVerifier};
 use authn_oidc_axum::prelude::SessionCookieExtractor;
-use authn_static::prelude::StaticVerifier;
+use authn_static::prelude::{StaticStore, StaticVerifier};
 use authn_static_axum::prelude::BasicAuthExtractor;
+use authn_static_directory::prelude::DirectoryStore;
 use authn_token::prelude::{TokenStore, TokenVerifier};
 use authn_token_axum::prelude::BearerTokenExtractor;
 
-use crate::{config::AuthConfig, error::BuildError, identity::Identity};
-
-pub type StaticAuthenticator = Authenticator<BasicAuthExtractor, StaticVerifier<Identity>>;
-pub type OidcAuthenticator = Authenticator<SessionCookieExtractor, OidcVerifier<Identity>>;
+pub type StaticAuthenticator<S = DirectoryStore> =
+    Authenticator<BasicAuthExtractor, StaticVerifier<S>>;
+pub type OidcAuthenticator<S = OidcUsers> = Authenticator<SessionCookieExtractor, OidcVerifier<S>>;
 pub type TokenAuthenticator<S> = Authenticator<BearerTokenExtractor, TokenVerifier<S>>;
-pub type AppAuthenticator<S> = (
-    StaticAuthenticator,
-    Option<OidcAuthenticator>,
-    Option<TokenAuthenticator<S>>,
+pub type AppAuthenticator<T, S = DirectoryStore, O = OidcUsers> = (
+    StaticAuthenticator<S>,
+    Option<OidcAuthenticator<O>>,
+    Option<TokenAuthenticator<T>>,
 );
 
-/// Builds the request authenticator without network access.
-/// For OIDC login routes, use `configure` with the same config and shared sessions.
-pub fn authenticator<S>(config: &AuthConfig<S>) -> Result<AppAuthenticator<S>, BuildError>
+/// Builds the request authenticator without I/O. Stores already contain parsed configuration.
+pub fn authenticator<T, S, O>(config: &AuthConfig<T, S, O>) -> AppAuthenticator<T, S, O>
 where
-    S: TokenStore<Identity = Identity> + Clone + Sync,
+    T: TokenStore<Identity = Identity> + Clone + Sync,
+    S: StaticStore<Identity = Identity> + Clone + Sync,
+    O: OidcIdentityStore + Clone + Sync,
 {
-    let credentials = &config.r#static;
     let static_auth = Authenticator::new(
         BasicAuthExtractor,
-        StaticVerifier::with_identity(
-            &credentials.username,
-            &credentials.password,
-            Identity::BreakGlass {
-                username: credentials.username.as_str().to_owned(),
-            },
-        ),
+        StaticVerifier::new(config.r#static.store.clone()),
     );
     let oidc = config.oidc.as_ref().map(|config| {
         Authenticator::new(
             config.cookies.extractor(),
-            OidcVerifier::<Identity>::new(config.sessions.clone()),
+            OidcVerifier::new(config.sessions.clone(), config.store.clone()),
         )
     });
     let token = config.token.as_ref().map(|config| {
@@ -46,5 +42,5 @@ where
             TokenVerifier::new(config.store.clone()),
         )
     });
-    Ok((static_auth, oidc, token))
+    (static_auth, oidc, token)
 }

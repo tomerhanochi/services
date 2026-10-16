@@ -3,7 +3,6 @@
 mod authenticator;
 mod config;
 mod error;
-mod identity;
 mod setup;
 
 pub mod prelude {
@@ -12,6 +11,6 @@ pub mod prelude {
     };
     pub use crate::config::{AuthConfig, OidcAuthConfig, StaticAuthConfig, TokenAuthConfig};
     pub use crate::error::BuildError;
-    pub use crate::identity::Identity;
     pub use crate::setup::{AuthSetup, configure};
+    pub use authn_identity::prelude::{Identity, Machine, MachineId, User, UserId};
 }

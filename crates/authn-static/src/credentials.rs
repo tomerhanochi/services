@@ -21,11 +21,11 @@ impl BasicCredentials {
         ))
     }
 
-    pub fn username(&self) -> &str {
-        self.username.as_str()
+    pub fn username(&self) -> &Username {
+        &self.username
     }
-    pub fn password(&self) -> &str {
-        self.password.expose_secret()
+    pub fn password(&self) -> &Password {
+        &self.password
     }
 }
 

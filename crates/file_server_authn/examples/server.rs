@@ -1,16 +1,18 @@
 //! A composition example. Replace ExampleTokenStore with your persistent TokenStore.
 
-use authn_static::prelude::{Password, Username};
+use cap_std::{ambient_authority, fs::Dir};
+
+use authn_static_directory::prelude::DirectoryStore;
 
 use std::{collections::HashMap, convert::Infallible, env, sync::Arc};
 
 use authn_axum::prelude::Authn;
-use authn_oidc::prelude::{ClientSecret, OidcConfig};
+use authn_oidc::prelude::{ClientSecret, OidcConfig, OidcUsers};
 use authn_token::prelude::{Token, TokenDigest, TokenStore};
 use axum::{Router, routing::get};
 use file_server_authn::prelude::{
-    AppAuthenticator, AuthConfig, Identity, OidcAuthConfig, StaticAuthConfig, TokenAuthConfig,
-    configure,
+    AppAuthenticator, AuthConfig, Identity, Machine, MachineId, OidcAuthConfig, StaticAuthConfig,
+    TokenAuthConfig, UserId, configure,
 };
 
 #[derive(Clone)]
@@ -37,9 +39,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(secret) => Some(TokenAuthConfig {
             store: ExampleTokenStore(Arc::new(HashMap::from([(
                 Token::new(secret)?.digest(),
-                Identity::ApiToken {
-                    subject: "example-client".into(),
-                },
+                Identity::Machine(Machine {
+                    id: MachineId::new("example-client")?,
+                }),
             )]))),
         }),
         Err(env::VarError::NotPresent) => None,
@@ -55,13 +57,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 env::var("OIDC_REDIRECT_URI")?,
             )?;
             client.client_secret = env::var("OIDC_CLIENT_SECRET").ok().map(ClientSecret::new);
-            Some(OidcAuthConfig::new(client))
+            let mut users = OidcUsers::default();
+            users.insert(
+                &client.issuer,
+                env::var("OIDC_SUBJECT")?,
+                UserId::new(env::var("OIDC_USER_ID")?)?,
+            );
+            Some(OidcAuthConfig::new(client, users))
         }
     };
     let config = AuthConfig {
         r#static: StaticAuthConfig {
-            username: Username::new(env::var("ADMIN_USERNAME")?)?,
-            password: Password::new(env::var("ADMIN_PASSWORD")?)?,
+            store: DirectoryStore::new(Dir::open_ambient_dir(
+                env::var("STATIC_AUTH_DIRECTORY")?,
+                ambient_authority(),
+            )?),
         },
         oidc,
         token,

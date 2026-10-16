@@ -1,27 +1,29 @@
-use crate::prelude::{OidcError, OidcIdentity, SessionId, Sessions};
-use authn::prelude::VerifyCredentials;
-use std::marker::PhantomData;
-#[derive(Debug, Clone)]
-pub struct OidcVerifier<I = OidcIdentity> {
-    sessions: Sessions,
-    identity: PhantomData<fn() -> I>,
-}
+use crate::prelude::{OidcError, OidcIdentityStore, OidcUsers, SessionId, Sessions};
+use authn::prelude::{Either, VerifyCredentials};
+use authn_identity::prelude::Identity;
 
-impl<I> OidcVerifier<I> {
-    pub fn new(sessions: Sessions) -> Self {
-        Self {
-            sessions,
-            identity: PhantomData,
-        }
+#[derive(Debug, Clone)]
+pub struct OidcVerifier<S = OidcUsers> {
+    sessions: Sessions,
+    store: S,
+}
+impl<S> OidcVerifier<S> {
+    pub fn new(sessions: Sessions, store: S) -> Self {
+        Self { sessions, store }
+    }
+    pub fn store(&self) -> &S {
+        &self.store
     }
 }
-
-impl<I: From<OidcIdentity>> VerifyCredentials for OidcVerifier<I> {
+impl<S: OidcIdentityStore + Sync> VerifyCredentials for OidcVerifier<S> {
     type Credentials = SessionId;
-    type Identity = I;
-    type Error = OidcError;
+    type Identity = Identity;
+    type Error = Either<OidcError, S::Error>;
 
-    async fn verify(&self, id: &SessionId) -> Result<Option<I>, OidcError> {
-        Ok(self.sessions.lookup(id)?.map(I::from))
+    async fn verify(&self, id: &SessionId) -> Result<Option<Identity>, Self::Error> {
+        let Some(claims) = self.sessions.lookup(id).map_err(Either::Left)? else {
+            return Ok(None);
+        };
+        self.store.lookup(&claims).await.map_err(Either::Right)
     }
 }
