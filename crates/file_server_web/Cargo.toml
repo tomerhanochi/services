@@ -1,0 +1,18 @@
+[package]
+name = "file_server_web"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "HTTP routes for the file server, using shared principal identities."
+
+[dependencies]
+authn = { path = "../authn" }
+authn-identity = { path = "../authn-identity" }
+axum = { workspace = true }
+file_server_core = { path = "../file_server_core" }
+file_server_views = { path = "../file_server_views" }
+htmlb = { path = "../htmlb" }
+serde = { workspace = true }
+tokio-util = { version = "0.7", features = ["io"] }
+tower-http = { version = "0.6", features = ["compression-br", "compression-gzip", "trace"] }
+tracing = "0.1"

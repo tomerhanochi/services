@@ -1,0 +1,11 @@
+[package]
+name = "file_server_views"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "File browser pages built with htmlb components."
+
+[dependencies]
+file_server_core = { path = "../file_server_core" }
+htmlb = { path = "../htmlb" }
+htmlb_components = { path = "../htmlb_components" }
