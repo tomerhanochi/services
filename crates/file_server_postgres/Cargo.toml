@@ -1,0 +1,15 @@
+[package]
+name = "file_server_postgres"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "PostgreSQL access adapter using the pure Rust SQLx driver."
+
+[dependencies]
+authn-identity = { path = "../authn-identity" }
+file_server_core = { path = "../file_server_core" }
+serde = { workspace = true }
+sqlx = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
