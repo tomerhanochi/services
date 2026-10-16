@@ -1,0 +1,15 @@
+[package]
+name = "file_server_fs"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Async filesystem adapter for trusted file-server mounts."
+
+[dependencies]
+file_server_core = { path = "../file_server_core" }
+rustix = { version = "1", features = ["fs"] }
+tokio = { workspace = true, features = ["fs", "rt"] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["io-util", "macros", "rt"] }
