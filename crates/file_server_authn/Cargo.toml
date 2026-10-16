@@ -1,0 +1,21 @@
+[package]
+name = "file_server_authn"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+authn = { path = "../authn" }
+authn-axum = { path = "../authn-axum" }
+authn-token = { path = "../authn-token" }
+authn-token-axum = { path = "../authn-token-axum" }
+authn-static = { path = "../authn-static" }
+authn-static-axum = { path = "../authn-static-axum" }
+authn-oidc = { path = "../authn-oidc" }
+authn-oidc-axum = { path = "../authn-oidc-axum" }
+axum = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
+tower = { version = "0.5", features = ["util"] }
+base64 = { workspace = true }

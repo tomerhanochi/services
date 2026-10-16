@@ -1,0 +1,9 @@
+[package]
+name = "htmlb_components"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Material Design 3 components for htmlb, configured only through the design system's tokens. Includes their stylesheet; themes live elsewhere."
+
+[dependencies]
+htmlb = { path = "../htmlb" }
