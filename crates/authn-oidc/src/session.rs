@@ -32,6 +32,7 @@ pub struct Sessions(Arc<Mutex<HashMap<[u8; 32], Session>>>);
 impl Sessions {
     /// Trusted application code may issue sessions after establishing an OIDC identity.
     /// Request data must never be used as an identity without token verification.
+    #[hotpath::measure(impl_type = "Sessions")]
     pub fn issue(
         &self,
         identity: OidcIdentity,
@@ -61,6 +62,7 @@ impl Sessions {
         Ok(id)
     }
 
+    #[hotpath::measure(impl_type = "Sessions")]
     pub fn lookup(&self, id: &SessionId) -> Result<Option<OidcIdentity>, OidcError> {
         let mut sessions = self.0.lock().map_err(|_| OidcError::StoreUnavailable)?;
         let digest = id.digest();
@@ -74,6 +76,7 @@ impl Sessions {
         Ok(Some(session.identity.clone()))
     }
 
+    #[hotpath::measure(impl_type = "Sessions")]
     pub fn revoke(&self, id: &SessionId) -> Result<(), OidcError> {
         self.0
             .lock()

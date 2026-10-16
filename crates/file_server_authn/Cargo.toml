@@ -5,6 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+hotpath = { workspace = true }
 authn-identity = { path = "../authn-identity" }
 authn = { path = "../authn" }
 authn-axum = { path = "../authn-axum" }
@@ -27,3 +28,6 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
 tower = { version = "0.5", features = ["util"] }
 base64 = { workspace = true }
 toml = "0.9"
+
+[features]
+hotpath = ["hotpath/hotpath"]

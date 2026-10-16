@@ -20,6 +20,7 @@ impl<S: OidcIdentityStore + Sync> VerifyCredentials for OidcVerifier<S> {
     type Identity = Identity;
     type Error = Either<OidcError, S::Error>;
 
+    #[hotpath::measure(impl_type = "OidcVerifier", future = true)]
     async fn verify(&self, id: &SessionId) -> Result<Option<Identity>, Self::Error> {
         let Some(claims) = self.sessions.lookup(id).map_err(Either::Left)? else {
             return Ok(None);

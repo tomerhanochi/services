@@ -86,6 +86,7 @@ impl<S: FileStore, R: AccessStore> FileService<S, R> {
     }
 
     /// What `user` may do in `mount`.
+    #[hotpath::measure(impl_type = "FileService", future = true)]
     pub async fn capabilities(
         &self,
         user: &Identity,
@@ -101,6 +102,7 @@ impl<S: FileStore, R: AccessStore> FileService<S, R> {
     }
 
     /// The mounts `user` may list, in configured order.
+    #[hotpath::measure(impl_type = "FileService", future = true)]
     pub async fn mounts(&self, user: &Identity) -> Result<Vec<MountName>, FilesError> {
         let mut visible = Vec::new();
         for mount in self.store.mounts() {
@@ -111,6 +113,7 @@ impl<S: FileStore, R: AccessStore> FileService<S, R> {
         Ok(visible)
     }
 
+    #[hotpath::measure(impl_type = "FileService", future = true)]
     pub async fn list(&self, user: &Identity, dir: &Location) -> Result<Directory, FilesError> {
         let capabilities = self.require(user, &dir.mount, Permission::List).await?;
         let mut entries = self.store.list(dir).await?;
@@ -122,11 +125,13 @@ impl<S: FileStore, R: AccessStore> FileService<S, R> {
     }
 
     /// One entry's metadata, e.g. for a rename form.
+    #[hotpath::measure(impl_type = "FileService", future = true)]
     pub async fn metadata(&self, user: &Identity, at: &Location) -> Result<Metadata, FilesError> {
         self.require(user, &at.mount, Permission::List).await?;
         Ok(self.store.metadata(at).await?)
     }
 
+    #[hotpath::measure(impl_type = "FileService", future = true)]
     pub async fn download(
         &self,
         user: &Identity,
@@ -138,6 +143,7 @@ impl<S: FileStore, R: AccessStore> FileService<S, R> {
     }
 
     /// Renames `at` within its directory, returning its new location.
+    #[hotpath::measure(impl_type = "FileService", future = true)]
     pub async fn rename(
         &self,
         user: &Identity,
@@ -154,6 +160,7 @@ impl<S: FileStore, R: AccessStore> FileService<S, R> {
     }
 
     /// Moves `at` into the directory `into`, in the same mount, returning its new location.
+    #[hotpath::measure(impl_type = "FileService", future = true)]
     pub async fn move_into(
         &self,
         user: &Identity,
@@ -181,6 +188,7 @@ impl<S: FileStore, R: AccessStore> FileService<S, R> {
 
     /// Fails with [`FilesError::NotFound`] if the user can't even list the mount, and
     /// [`FilesError::Forbidden`] if they can but lack `permission`.
+    #[hotpath::measure(impl_type = "FileService", future = true)]
     async fn require(
         &self,
         user: &Identity,

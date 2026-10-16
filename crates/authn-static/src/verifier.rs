@@ -21,6 +21,7 @@ where
     type Identity = S::Identity;
     type Error = Either<S::Error, PasswordVerificationError>;
 
+    #[hotpath::measure(impl_type = "StaticVerifier", future = true)]
     async fn verify(
         &self,
         credentials: &BasicCredentials,

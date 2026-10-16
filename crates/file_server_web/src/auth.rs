@@ -10,6 +10,7 @@ use axum::{
 pub(crate) struct CurrentUser(pub Option<Identity>);
 impl<P: Ports> FromRequestParts<AppState<P>> for CurrentUser {
     type Rejection = Response;
+    #[hotpath::measure(future = true)]
     async fn from_request_parts(parts: &mut Parts, state: &AppState<P>) -> Result<Self, Response> {
         match state.ports.authenticator().authenticate(parts).await {
             Ok(AuthOutcome::Authenticated(identity)) => Ok(Self(Some(identity))),
@@ -22,6 +23,7 @@ impl<P: Ports> FromRequestParts<AppState<P>> for CurrentUser {
         }
     }
 }
+#[hotpath::measure(future = true)]
 pub(crate) async fn login<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
@@ -42,6 +44,7 @@ pub(crate) async fn login<P: Ports>(
     )
         .into_response()
 }
+#[hotpath::measure(future = true)]
 pub(crate) async fn logout<P: Ports>(State(state): State<AppState<P>>) -> Response {
     if state.oidc_enabled {
         Redirect::temporary("/auth/logout").into_response()

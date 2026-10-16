@@ -10,6 +10,7 @@ pub struct PostgresAccess {
     pool: PgPool,
 }
 impl PostgresAccess {
+    #[hotpath::measure(impl_type = "PostgresAccess", future = true)]
     pub async fn connect(
         config: &DatabaseConfig,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
@@ -27,6 +28,7 @@ impl PostgresAccess {
 
     /// Replace only config-owned access records atomically. API tokens are unaffected.
     /// Transactions are local SQLx transactions, with no unit-of-work abstraction.
+    #[hotpath::measure(impl_type = "PostgresAccess", future = true)]
     pub async fn sync_access(
         &self,
         grants: &[(String, MountName, Grant)],
@@ -69,6 +71,7 @@ fn principal(identity: &Identity) -> (&'static str, &str) {
     }
 }
 impl AccessStore for PostgresAccess {
+    #[hotpath::measure(impl_type = "PostgresAccess", future = true)]
     async fn capabilities(
         &self,
         identity: &Identity,

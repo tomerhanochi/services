@@ -8,6 +8,7 @@ pub struct TokioStore {
     roots: HashMap<MountName, PathBuf>,
 }
 impl TokioStore {
+    #[hotpath::measure(impl_type = "TokioStore", future = true)]
     pub async fn new(
         mounts: impl IntoIterator<Item = (MountName, PathBuf)>,
     ) -> Result<Self, FsError> {
@@ -26,6 +27,7 @@ impl TokioStore {
         }
         Ok(Self { order, roots })
     }
+    #[hotpath::measure(impl_type = "TokioStore", future = true)]
     async fn resolve(&self, at: &Location) -> Result<PathBuf, FsError> {
         let root = self.roots.get(&at.mount).ok_or(FsError::NotFound)?;
         let path = root.join(relative(&at.path));
@@ -35,6 +37,7 @@ impl TokioStore {
         }
         Ok(path)
     }
+    #[hotpath::measure(impl_type = "TokioStore", future = true)]
     async fn parent(&self, at: &Location) -> Result<PathBuf, FsError> {
         let parent = at.parent().ok_or(FsError::NotFound)?;
         let name = at.path.name().ok_or(FsError::NotFound)?;
@@ -70,6 +73,7 @@ impl FileStore for TokioStore {
     fn mounts(&self) -> &[MountName] {
         &self.order
     }
+    #[hotpath::measure(impl_type = "TokioStore", future = true)]
     async fn list(&self, at: &Location) -> Result<Vec<Entry>, FsError> {
         let mut directory = tokio::fs::read_dir(self.resolve(at).await?)
             .await
@@ -90,12 +94,14 @@ impl FileStore for TokioStore {
         }
         Ok(entries)
     }
+    #[hotpath::measure(impl_type = "TokioStore", future = true)]
     async fn metadata(&self, at: &Location) -> Result<Metadata, FsError> {
         tokio::fs::metadata(self.resolve(at).await?)
             .await
             .map(|meta| metadata(&meta))
             .map_err(fs_error)
     }
+    #[hotpath::measure(impl_type = "TokioStore", future = true)]
     async fn open(&self, at: &Location) -> Result<(Metadata, Self::Content), FsError> {
         let file = tokio::fs::File::open(self.resolve(at).await?)
             .await
@@ -109,6 +115,7 @@ impl FileStore for TokioStore {
         }
         Ok((metadata(&meta), file))
     }
+    #[hotpath::measure(impl_type = "TokioStore", future = true)]
     async fn rename(&self, from: &Location, to: &Location) -> Result<(), FsError> {
         if from.mount != to.mount {
             return Err(FsError::CrossDevice);

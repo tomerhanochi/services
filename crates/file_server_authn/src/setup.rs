@@ -26,6 +26,7 @@ impl AuthSetup {
 }
 
 /// Constructs stores, sessions, discovery clients and request authentication from config values.
+#[hotpath::measure(future = true)]
 pub async fn configure(config: &AuthConfig) -> Result<AuthSetup, BuildError> {
     if config.r#static.is_none() && config.oidc.is_none() && config.token.is_none() {
         return Err(BuildError::NoMechanisms);

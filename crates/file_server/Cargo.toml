@@ -6,6 +6,7 @@ publish.workspace = true
 description = "Self-hosted file browser with PostgreSQL-backed access and configurable authentication."
 
 [dependencies]
+hotpath = { workspace = true }
 file_server_authn = { path = "../file_server_authn" }
 file_server_core = { path = "../file_server_core" }
 file_server_fs = { path = "../file_server_fs" }
@@ -33,3 +34,8 @@ tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 serde_json = "1"
 toml = "0.9"
+
+[features]
+hotpath = ["hotpath/hotpath", "hotpath/axum-0-8", "hotpath/sqlx", "hotpath/tokio"]
+hotpath-alloc = ["hotpath", "hotpath/hotpath-alloc"]
+hotpath-prometheus = ["hotpath", "hotpath/hotpath-prometheus"]

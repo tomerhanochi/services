@@ -12,6 +12,7 @@ impl ExtractCredentials for BearerTokenExtractor {
     type Credentials = Token;
     type Error = Infallible;
 
+    #[hotpath::measure(impl_type = "BearerTokenExtractor")]
     fn extract(&self, ctx: &Parts) -> Result<Extracted<Token>, Infallible> {
         Ok(authorization(ctx, "Bearer").parse(Token::new))
     }

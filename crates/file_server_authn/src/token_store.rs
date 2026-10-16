@@ -8,6 +8,7 @@ pub struct PostgresTokens(pub(crate) PgPool);
 impl TokenStore for PostgresTokens {
     type Identity = Identity;
     type Error = sqlx::Error;
+    #[hotpath::measure(future = true)]
     async fn lookup(&self, digest: &TokenDigest) -> Result<Option<Identity>, sqlx::Error> {
         let identity = sqlx::query_scalar::<_, Json<Identity>>(
             "SELECT identity FROM authn_api_tokens WHERE digest = $1 AND NOT revoked AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)"
@@ -16,6 +17,7 @@ impl TokenStore for PostgresTokens {
     }
 }
 
+#[hotpath::measure(future = true)]
 pub(crate) async fn connect(
     config: &crate::config::TokenAuthConfig,
 ) -> Result<PostgresTokens, sqlx::Error> {

@@ -95,6 +95,7 @@ fn set_cookie(response: &mut Response, cookie: String) -> Result<(), OidcHttpErr
     Ok(())
 }
 
+#[hotpath::measure(future = true)]
 async fn login(State(http): State<OidcHttp>) -> Result<Response, OidcHttpError> {
     let login = http.client.begin_login()?;
     let mut response = Redirect::to(&login.url).into_response();
@@ -114,6 +115,7 @@ struct Callback {
     error: Option<String>,
 }
 
+#[hotpath::measure(future = true)]
 async fn callback(
     State(http): State<OidcHttp>,
     headers: HeaderMap,
@@ -150,6 +152,7 @@ async fn callback(
     Ok(response)
 }
 
+#[hotpath::measure(future = true)]
 async fn logout(
     State(http): State<OidcHttp>,
     headers: HeaderMap,
