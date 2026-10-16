@@ -2,7 +2,7 @@
 
 use std::{error::Error, fmt};
 
-use authn::{Authenticate, Authenticator, Chain};
+use authn::Authenticator;
 use authn_oidc::{OidcClient, OidcConfig, OidcError, OidcIdentity, OidcVerifier, Sessions};
 use authn_oidc_axum::{CookieSettings, OidcHttp, SessionCookieExtractor};
 use authn_static::StaticVerifier;
@@ -27,8 +27,11 @@ impl From<OidcIdentity> for Identity {
 pub type StaticAuthenticator = Authenticator<BasicAuthExtractor, StaticVerifier<Identity>>;
 pub type OidcAuthenticator = Authenticator<SessionCookieExtractor, OidcVerifier<Identity>>;
 pub type TokenAuthenticator<S> = Authenticator<BearerTokenExtractor, TokenVerifier<S>>;
-pub type AppAuthenticator<S> =
-    Chain<StaticAuthenticator, Chain<Option<OidcAuthenticator>, Option<TokenAuthenticator<S>>>>;
+pub type AppAuthenticator<S> = (
+    StaticAuthenticator,
+    Option<OidcAuthenticator>,
+    Option<TokenAuthenticator<S>>,
+);
 
 #[derive(Clone)]
 pub struct StaticAuthConfig {
@@ -144,7 +147,7 @@ where
             TokenVerifier::new(config.store.clone()),
         )
     });
-    Ok(static_auth.chain(oidc.chain(token)))
+    Ok((static_auth, oidc, token))
 }
 
 pub struct AuthSetup<S> {
