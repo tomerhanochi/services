@@ -110,3 +110,27 @@ per-scenario Prometheus snapshots, `server.log`, and (when profiling is enabled)
 The profiled summaries use hotpath RSS samples; the control reads RSS using
 `ps`. The database and Python load generator are separate processes and are
 excluded from application RSS.
+
+## Why the 1,000-entry HTML is 3.12 MiB
+
+`just inspect-html` renders the same fixture directly through the existing views,
+without a database. It reproduces exactly 3,267,820 bytes for an editor:
+
+- 5,001 inline SVG elements occupy 2,254,284 bytes (69.0% of the document).
+  Each file has Draft, MoreVert, Download, Edit, and DriveFileMove icons; the
+  remaining icon belongs to the page navigation. Every occurrence repeats the
+  complete SVG path data.
+- Each file has its own hidden action sheet containing the Download, Rename,
+  and Move links. The 1,000 sheets occupy 1,946,890 bytes including their icons.
+- Their 1,000 More buttons occupy 616,890 bytes including their icons.
+- The remaining row markup occupies 703,000 bytes; fixed page markup is 1,040 bytes.
+
+The SVG total overlaps the action-sheet and button totals; do not add those two
+breakdowns together. Hidden native popovers are included in the initial HTML.
+The filename, URLs, size, and date make up only a small part of each row.
+
+With viewer permissions, the same page has 1,001 icons and 662,040 total bytes.
+The editor's action UI therefore adds 2,605,780 bytes, nearly 80% of its response.
+Sharing SVG definitions and reducing repeated action UI are the largest targets.
+The measurements above are uncompressed; gzip reduced the editor response to
+about 45 KiB on the wire, while the server still built the full HTML string.

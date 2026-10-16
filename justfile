@@ -456,3 +456,7 @@ _measure-release output samples:
                     process.wait()
         assert process.returncode == 0
     print(f"Saved measurements to {output}" + (" (including hotpath report)" if profiling else ""))
+
+# Render editor/viewer listings and count repeated SVG markup without a database.
+inspect-html output="/tmp/file-server-html":
+    cargo run --release -p file_server_views --example html_size -- {{ quote(output) }}
