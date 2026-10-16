@@ -34,3 +34,13 @@ fn secrets_are_redacted_and_store_fields_are_not_configuration() {
     assert!(!format!("{config:?}").contains("secret"));
     assert!(toml::from_str::<AuthConfig>("[static]\nstore='not-config'").is_err());
 }
+
+#[test]
+fn zero_database_pool_sizes_are_rejected_during_parsing() {
+    assert!(
+        toml::from_str::<AuthConfig>(
+            "[token]\ndatabase_url='postgres://localhost/db'\nmax_connections=0"
+        )
+        .is_err()
+    );
+}

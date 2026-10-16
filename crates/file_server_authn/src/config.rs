@@ -1,6 +1,6 @@
 use authn_identity::prelude::UserId;
 use serde::Deserialize;
-use std::{collections::BTreeMap, fmt, path::PathBuf};
+use std::{collections::BTreeMap, fmt, num::NonZeroU32, path::PathBuf};
 
 /// Only serializable deployment inputs; setup creates all runtime resources.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -69,10 +69,10 @@ impl fmt::Debug for OidcAuthConfig {
 pub struct TokenAuthConfig {
     pub database_url: String,
     #[serde(default = "max_connections")]
-    pub max_connections: u32,
+    pub max_connections: NonZeroU32,
 }
-fn max_connections() -> u32 {
-    5
+fn max_connections() -> NonZeroU32 {
+    NonZeroU32::new(5).unwrap()
 }
 impl fmt::Debug for TokenAuthConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
