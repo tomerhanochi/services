@@ -14,6 +14,42 @@ build-release:
 run config="crates/file_server/file_server.example.toml":
     cargo run -p file_server -- {{ quote(config) }}
 
+build-profile:
+    cargo build --release -p file_server --bins --examples --features hotpath-prometheus
+
+# Profile optimized code; Ctrl-C flushes the function/SQL/route report.
+profile config="crates/file_server/file_server.example.toml":
+    cargo run --release -p file_server --features hotpath-prometheus -- {{ quote(config) }}
+
+# Match `just run` optimization settings when investigating development latency.
+profile-debug config="crates/file_server/file_server.example.toml":
+    cargo run -p file_server --features hotpath-prometheus -- {{ quote(config) }}
+
+# Allocation tracking adds overhead; enable it separately from timing runs.
+profile-alloc config="crates/file_server/file_server.example.toml":
+    cargo run --release -p file_server --features hotpath-prometheus,hotpath-alloc -- {{ quote(config) }}
+
+# The local Docker scraper uses the matching development-only bearer token.
+profile-grafana config="crates/file_server/file_server.example.toml":
+    HOTPATH_PROMETHEUS_HOST=0.0.0.0 HOTPATH_PROMETHEUS_AUTH_TOKEN=file-server-local-profiling just profile {{ quote(config) }}
+
+# Grafana :3001 (admin / local-profiling), Prometheus :9090, both localhost-only.
+profiling-up:
+    docker compose --file crates/file_server/profiling/compose.yaml up --detach --wait
+
+profiling-down:
+    docker compose --file crates/file_server/profiling/compose.yaml down
+
+check-profile:
+    cargo check --workspace --all-targets --features file_server/hotpath-prometheus,file_server/hotpath-alloc
+
+test-profile:
+    cargo test --workspace --all-targets --features file_server/hotpath-prometheus,file_server/hotpath-alloc
+
+# Use the Docker integration workflow with profiling and assert live telemetry.
+test-profile-postgres port="15434":
+    SMOKE_HOTPATH=1 just test-postgres {{ quote(port) }}
+
 # Read a password from stdin and print only its independently salted Argon2id hash.
 hash-password:
     @cargo run --quiet -p file_server --example hash_password
@@ -51,8 +87,13 @@ test-postgres port="15433":
     trap cleanup EXIT
     "${compose[@]}" up --detach --wait
     export TEST_DATABASE_URL="postgres://file_server:development-only@localhost:$PGPORT/file_server"
-    just test-all
-    just build
+    if [[ "${SMOKE_HOTPATH:-}" == 1 ]]; then
+        cargo test --workspace --all-targets --features file_server/hotpath-prometheus,file_server/hotpath-alloc -- --include-ignored --test-threads=1
+        cargo build -p file_server --bins --examples --features hotpath-prometheus,hotpath-alloc
+    else
+        just test-all
+        just build
+    fi
     just smoke
 
 # Test the actual built binary over HTTP, including env-over-TOML config and SIGTERM.
@@ -76,7 +117,7 @@ smoke:
     root = Path.cwd()
     metadata = json.loads(subprocess.check_output(
         ["cargo", "metadata", "--offline", "--format-version=1", "--no-deps"], cwd=root))
-    target = Path(metadata["target_directory"]) / "debug"
+    target = Path(metadata["target_directory"]) / os.environ.get("SMOKE_BUILD_PROFILE", "debug")
     with tempfile.TemporaryDirectory(prefix="file-server-smoke-") as temporary:
         directory = Path(temporary)
         (directory / "users").mkdir()
@@ -101,6 +142,20 @@ smoke:
             "FILE_SERVER_LISTEN": f"127.0.0.1:{port}",
             "FILE_SERVER_PUBLIC_URL": f"http://127.0.0.1:{port}",
         })
+        profiling = os.environ.get("SMOKE_HOTPATH") == "1"
+        if profiling:
+            # Private exporter port; disable the other profiler listeners for isolation.
+            with socket.socket() as available:
+                available.bind(("127.0.0.1", 0))
+                metrics_port = available.getsockname()[1]
+            environment.update({
+                "HOTPATH_PROMETHEUS_HOST": "127.0.0.1",
+                "HOTPATH_PROMETHEUS_PORT": str(metrics_port),
+                "HOTPATH_PROMETHEUS_AUTH_TOKEN": "smoke-metrics-token",
+                "HOTPATH_METRICS_SERVER_OFF": "1",
+                "HOTPATH_OUTPUT_FORMAT": "json",
+                "HOTPATH_OUTPUT_PATH": str(directory / "profile.json"),
+            })
         base = f"http://127.0.0.1:{port}"
         authorization = "Basic " + base64.b64encode(b"alice:smoke-password").decode()
         with (directory / "server.log").open("w+") as log:
@@ -135,8 +190,45 @@ smoke:
                 with urllib.request.urlopen(request, timeout=5) as response:
                     assert response.status == 200  # follows the 303 to the listing
                 assert (directory / "documents/renamed.txt").read_text() == "file-server smoke test\n"
+                if profiling:
+                    for attempt in range(50):
+                        request = urllib.request.Request(
+                            f"http://127.0.0.1:{metrics_port}/metrics",
+                            headers={"Authorization": "Bearer smoke-metrics-token"})
+                        with urllib.request.urlopen(request, timeout=5) as response:
+                            metrics = response.read().decode()
+                        if all(name in metrics for name in [
+                            "hotpath_server_sql_calls_total", "hotpath_io_bytes_total",
+                            "PasswordHash::verify", "PostgresAccess::capabilities",
+                            "hotpath_function_alloc_bytes_total", "hotpath_tokio_workers",
+                        ]):
+                            break
+                        time.sleep(0.1)
+                    else:
+                        raise AssertionError("Expected route, SQL, hash, I/O, allocation and runtime telemetry")
+                    assert 'route="GET /m/{mount}/"' in metrics
+                    sql_counts = [line for line in metrics.splitlines()
+                                  if line.startswith("hotpath_server_sql_calls_total{")
+                                  and 'route="GET /m/{mount}/"' in line]
+                    assert sql_counts and any(float(line.rsplit(" ", 1)[1]) > 0 for line in sql_counts)
+                    assert any(line.startswith("hotpath_sql_queries_total{")
+                               and 'route="GET /m/{mount}/"' in line
+                               and "PostgresAccess::capabilities" in line
+                               for line in metrics.splitlines())
+                    assert "smoke-password" not in metrics and "$argon2id$" not in metrics
+                    try:
+                        urllib.request.urlopen(f"http://127.0.0.1:{metrics_port}/metrics", timeout=5)
+                    except urllib.error.HTTPError as error:
+                        assert error.code == 401
+                    else:
+                        raise AssertionError("Exporter accepted an unauthenticated scrape")
+                    print("Profiling smoke test passed: route, SQL, Argon2, I/O, allocations, runtime, exporter auth.")
                 process.send_signal(signal.SIGTERM)
                 assert process.wait(timeout=10) == 0
+                if profiling:
+                    report = json.loads((directory / "profile.json").read_text())
+                    assert report
+                    print("Profiling JSON report flushed on graceful shutdown.")
                 print("Binary smoke test passed: env-over-TOML config, health, Basic auth, listing, download, rename, graceful shutdown.")
             finally:
                 if process.poll() is None:
