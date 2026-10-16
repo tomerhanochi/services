@@ -191,3 +191,6 @@ Interpret measurements with these boundaries:
 runs the full suite against disposable Docker PostgreSQL, then verifies live
 route, SQL, hashing, I/O, allocation and Tokio metrics, exporter authentication,
 and JSON report generation during the binary smoke test.
+
+Release timing and allocation measurements, memory observations, and a reproducible
+Docker workload are documented in [profiling/measurements.md](profiling/measurements.md).
