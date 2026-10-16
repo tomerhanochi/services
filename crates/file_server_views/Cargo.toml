@@ -6,6 +6,10 @@ publish.workspace = true
 description = "File browser pages built with htmlb components."
 
 [dependencies]
+hotpath = { workspace = true }
 file_server_core = { path = "../file_server_core" }
 htmlb = { path = "../htmlb" }
 htmlb_components = { path = "../htmlb_components" }
+
+[features]
+hotpath = ["hotpath/hotpath"]

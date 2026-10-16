@@ -123,6 +123,7 @@ pub trait IntoHtml: Sized {
 
     /// Reserves [`len_hint`](Self::len_hint) plus 1/8 headroom for escape expansion, then
     /// renders. To reuse a buffer across renders, call [`write_html`](Self::write_html).
+    #[hotpath::measure]
     fn to_html(self) -> String {
         let hint = self.len_hint();
         let mut buf = String::with_capacity(hint + hint / 8);

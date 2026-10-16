@@ -101,6 +101,7 @@ impl TryFrom<RawConfig> for Config {
 }
 impl Config {
     /// TOML followed by FILE_SERVER_* overrides; double underscores separate nested keys.
+    #[hotpath::measure(impl_type = "Config")]
     pub fn load(path: &Path) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let contents = std::fs::read_to_string(path)?;
         let mut config: Self = Figment::new()

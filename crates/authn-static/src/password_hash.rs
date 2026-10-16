@@ -11,6 +11,7 @@ use std::{fmt, str::FromStr};
 pub struct PasswordHash(PasswordHashString);
 
 impl PasswordHash {
+    #[hotpath::measure(impl_type = "PasswordHash")]
     pub fn new(encoded: &str) -> Result<Self, InvalidPasswordHash> {
         let encoded = PasswordHashString::new(encoded).map_err(|_| InvalidPasswordHash)?;
         let parsed = encoded.password_hash();
@@ -35,6 +36,7 @@ impl PasswordHash {
         Ok(Self(encoded))
     }
 
+    #[hotpath::measure(impl_type = "PasswordHash")]
     pub(crate) fn verify(&self, password: &Password) -> Result<bool, Error> {
         match Argon2::default()
             .verify_password(password.expose_secret().as_bytes(), &self.0.password_hash())

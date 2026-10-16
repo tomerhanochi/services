@@ -57,6 +57,7 @@ fn listing_url(dir: &Location, done: Option<Done>) -> String {
 }
 
 /// `GET /`: the mounts the user can see.
+#[hotpath::measure(future = true)]
 pub async fn home<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
@@ -77,6 +78,7 @@ pub struct BrowseQuery {
 }
 
 /// `GET /m/{mount}/{*path}`: a directory's listing, or a file's download.
+#[hotpath::measure(future = true)]
 pub async fn browse<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
@@ -111,6 +113,7 @@ pub async fn browse<P: Ports>(
         .unwrap_or_else(|e| files_error(&state, Some(&user), e))
 }
 
+#[hotpath::measure(future = true)]
 async fn download<P: Ports>(
     state: &AppState<P>,
     user: &Identity,
@@ -130,7 +133,14 @@ async fn download<P: Ports>(
             HeaderValue::from_static("private, no-cache"),
         ),
     ];
-    Ok((headers, Body::from_stream(ReaderStream::new(file))).into_response())
+    Ok((
+        headers,
+        Body::from_stream(ReaderStream::new(hotpath::io!(
+            file,
+            label = "download-file"
+        ))),
+    )
+        .into_response())
 }
 
 /// `attachment; filename="<ascii>"; filename*=UTF-8''<percent-encoded>` (RFC 6266): the
@@ -159,6 +169,7 @@ fn content_disposition(name: &str) -> HeaderValue {
 }
 
 /// `GET /rename/{mount}/{*path}`
+#[hotpath::measure(future = true)]
 pub async fn rename_form<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
@@ -193,6 +204,7 @@ pub struct RenameForm {
 }
 
 /// `POST /rename/{mount}/{*path}`
+#[hotpath::measure(future = true)]
 pub async fn rename<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
@@ -243,6 +255,7 @@ pub struct MoveQuery {
 }
 
 /// `GET /move/{mount}/{*path}?to=<folder>`: pick where to move to, starting where it is.
+#[hotpath::measure(future = true)]
 pub async fn move_form<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
@@ -270,6 +283,7 @@ pub async fn move_form<P: Ports>(
         .unwrap_or_else(|e| files_error(&state, Some(&user), e))
 }
 
+#[hotpath::measure(future = true)]
 async fn picker<P: Ports>(
     state: &AppState<P>,
     user: &Identity,
@@ -293,6 +307,7 @@ pub struct MoveForm {
 }
 
 /// `POST /move/{mount}/{*path}`
+#[hotpath::measure(future = true)]
 pub async fn move_entry<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,

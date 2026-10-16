@@ -20,6 +20,7 @@ impl<S: TokenStore + Sync> VerifyCredentials for TokenVerifier<S> {
     type Identity = S::Identity;
     type Error = S::Error;
 
+    #[hotpath::measure(impl_type = "TokenVerifier", future = true)]
     async fn verify(&self, token: &Token) -> Result<Option<Self::Identity>, Self::Error> {
         self.store.lookup(&token.digest()).await
     }

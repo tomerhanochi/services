@@ -71,6 +71,7 @@ impl Done {
 }
 
 /// For visitors who aren't signed in.
+#[hotpath::measure]
 pub fn signed_out<'a>(page: Page<'a>, next: &'a str) -> impl IntoHtml + 'a {
     let body = (
         headline("Your files, on your server"),
@@ -83,6 +84,7 @@ pub fn signed_out<'a>(page: Page<'a>, next: &'a str) -> impl IntoHtml + 'a {
 }
 
 /// The mounts the user can see.
+#[hotpath::measure]
 pub fn home<'a>(page: Page<'a>, mounts: &'a [MountName]) -> impl IntoHtml + 'a {
     let rows = mounts.iter().map(|mount| {
         list_item(mount.as_str())
@@ -119,6 +121,7 @@ impl htmlb::AttrValue for MountHref<'_> {
 }
 
 /// A directory's listing.
+#[hotpath::measure]
 pub fn directory<'a>(
     page: Page<'a>,
     at: &'a Location,
@@ -288,6 +291,7 @@ fn empty(message: &str) -> impl IntoHtml + '_ {
 }
 
 /// The rename form: a full-screen dialog, with the action in the bottom bar where a thumb is.
+#[hotpath::measure]
 pub fn rename<'a>(
     page: Page<'a>,
     at: &'a Location,
@@ -315,6 +319,7 @@ pub fn rename<'a>(
 }
 
 /// The move destination picker, showing the folders in `browsing`.
+#[hotpath::measure]
 pub fn move_picker<'a>(
     page: Page<'a>,
     item: &'a Location,
@@ -405,6 +410,7 @@ impl htmlb::AttrValue for PickerChild<'_> {
 }
 
 /// Something went wrong, with a way back.
+#[hotpath::measure]
 pub fn error<'a>(page: Page<'a>, page_title: &'a str, message: &'a str) -> impl IntoHtml + 'a {
     let bar =
         top_app_bar(page_title).navigation(icon_button(icon::Home, "All folders").href(urls::HOME));

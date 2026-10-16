@@ -5,8 +5,12 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+hotpath = { workspace = true }
 authn = { path = "../authn" }
 authn-axum = { path = "../authn-axum" }
 authn-token = { path = "../authn-token" }
 
 axum = { workspace = true }
+
+[features]
+hotpath = ["hotpath/hotpath"]

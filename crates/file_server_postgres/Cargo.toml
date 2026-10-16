@@ -6,6 +6,7 @@ publish.workspace = true
 description = "PostgreSQL access adapter using the pure Rust SQLx driver."
 
 [dependencies]
+hotpath = { workspace = true }
 authn-identity = { path = "../authn-identity" }
 file_server_core = { path = "../file_server_core" }
 serde = { workspace = true }
@@ -13,3 +14,6 @@ sqlx = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt"] }
+
+[features]
+hotpath = ["hotpath/hotpath"]

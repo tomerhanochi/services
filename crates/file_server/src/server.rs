@@ -29,6 +29,7 @@ pub struct Server {
     router: Router,
 }
 impl Server {
+    #[hotpath::measure(future = true)]
     pub async fn new(config: Config) -> Result<Self> {
         let access = PostgresAccess::connect(&config.database).await?;
         let grants: Vec<(String, MountName, Grant)> = config
@@ -83,6 +84,7 @@ impl Server {
     }
 }
 
+#[hotpath::measure(future = true)]
 pub async fn run(path: &Path, shutdown: impl Future<Output = ()> + Send + 'static) -> Result<()> {
     let config = Config::load(path)?;
     let server = Server::new(config).await?;

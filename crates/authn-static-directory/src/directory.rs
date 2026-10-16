@@ -21,6 +21,7 @@ impl DirectoryStore {
 impl StaticStore for DirectoryStore {
     type Identity = Identity;
     type Error = io::Error;
+    #[hotpath::measure(impl_type = "DirectoryStore", future = true)]
     async fn lookup(&self, username: &Username) -> io::Result<Option<StaticAccount<Identity>>> {
         let Some(user_id) = directory_user_id(username) else {
             return Ok(None);
@@ -31,7 +32,8 @@ impl StaticStore for DirectoryStore {
             Err(error) => return Err(error),
         };
         let mut bytes = Vec::new();
-        file.take(MAX_HASH_BYTES + 1)
+        hotpath::io!(file, label = "password-hash-file")
+            .take(MAX_HASH_BYTES + 1)
             .read_to_end(&mut bytes)
             .await?;
         if bytes.len() as u64 > MAX_HASH_BYTES {

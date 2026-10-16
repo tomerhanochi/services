@@ -51,6 +51,7 @@ struct Inner {
 }
 
 impl OidcClient {
+    #[hotpath::measure(impl_type = "OidcClient", future = true)]
     pub async fn discover(config: OidcConfig, sessions: Sessions) -> Result<Self, OidcError> {
         let http = reqwest::Client::builder()
             .https_only(true)
@@ -98,6 +99,7 @@ impl OidcClient {
     }
 
     /// Refreshes discovery metadata and signing keys, preserving existing sessions and logins.
+    #[hotpath::measure(impl_type = "OidcClient", future = true)]
     pub async fn refresh_provider(&self) -> Result<(), OidcError> {
         let refreshed = Self::discover(self.inner.config.clone(), self.sessions()).await?;
         *self
@@ -120,6 +122,7 @@ impl OidcClient {
         self.inner.config.login_ttl.get()
     }
 
+    #[hotpath::measure(impl_type = "OidcClient")]
     pub fn begin_login(&self) -> Result<LoginRequest, OidcError> {
         let (challenge, pkce) = PkceCodeChallenge::new_random_sha256();
         let client = self.client()?;
@@ -161,6 +164,7 @@ impl OidcClient {
         })
     }
 
+    #[hotpath::measure(impl_type = "OidcClient", future = true)]
     pub async fn complete_login(
         &self,
         code: &str,

@@ -6,4 +6,8 @@ publish.workspace = true
 description = "Authentication ports: who is making a request, established from implementation-specific credentials."
 
 [dependencies]
+hotpath = { workspace = true }
 serde = { workspace = true }
+
+[features]
+hotpath = ["hotpath/hotpath"]

@@ -13,6 +13,7 @@ impl ExtractCredentials for BasicAuthExtractor {
     type Credentials = BasicCredentials;
     type Error = Infallible;
 
+    #[hotpath::measure(impl_type = "BasicAuthExtractor")]
     fn extract(&self, parts: &Parts) -> Result<Extracted<BasicCredentials>, Infallible> {
         Ok(authorization(parts, "Basic").parse(|encoded| {
             let bytes = STANDARD.decode(encoded).map_err(|_| ())?;

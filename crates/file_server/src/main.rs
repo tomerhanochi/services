@@ -2,12 +2,19 @@ use file_server::prelude::{run, shutdown_signal};
 use std::{path::PathBuf, process::ExitCode};
 
 #[tokio::main]
+#[hotpath::main(percentiles = [50, 95, 99], functions_limit = 50)]
 async fn main() -> ExitCode {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
-        )
-        .init();
+    use tracing_subscriber::{Layer, layer::SubscriberExt, util::SubscriberInitExt};
+    let logs = tracing_subscriber::fmt::layer().with_filter(
+        tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+    );
+    let subscriber = tracing_subscriber::registry().with(logs);
+    // Keep the log filter on its own layer: SQLx profiling needs DEBUG events
+    // even when RUST_LOG only displays INFO messages.
+    #[cfg(feature = "hotpath")]
+    let subscriber = subscriber.with(hotpath::sqlx_tracing_layer());
+    subscriber.init();
+    hotpath::tokio_runtime!();
     let argument = std::env::args_os().nth(1);
     if argument
         .as_ref()

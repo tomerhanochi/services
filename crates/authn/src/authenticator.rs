@@ -34,6 +34,7 @@ where
     type Identity = V::Identity;
     type Error = Either<E::Error, V::Error>;
 
+    #[hotpath::measure(impl_type = "Authenticator", future = true)]
     async fn authenticate(
         &self,
         ctx: &Self::Context,

@@ -16,6 +16,7 @@ where
 {
     type Rejection = AuthnRejection<A::Error>;
 
+    #[hotpath::measure(impl_type = "Authn", future = true)]
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let authenticator = A::from_ref(state);
 

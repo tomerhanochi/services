@@ -5,6 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+hotpath = { workspace = true }
 authn-identity = { path = "../authn-identity" }
 authn-static = { path = "../authn-static" }
 tokio = { workspace = true, features = ["fs", "io-util"] }
@@ -14,3 +15,6 @@ argon2 = { workspace = true }
 authn = { path = "../authn" }
 tokio = { workspace = true, features = ["macros", "rt"] }
 tempfile = "3"
+
+[features]
+hotpath = ["hotpath/hotpath", "hotpath/tokio"]
