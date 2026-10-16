@@ -1,4 +1,4 @@
-use crate::{AuthOutcome, Authenticate};
+use crate::prelude::{AuthOutcome, Authenticate};
 
 impl<T: Authenticate> Authenticate for &T {
     type Context = T::Context;

@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::{AuthOutcome, Authenticate, Either};
+use crate::prelude::{AuthOutcome, Authenticate, Either};
 
 macro_rules! tuple_or_single {
     ($single:expr $(,)?) => {

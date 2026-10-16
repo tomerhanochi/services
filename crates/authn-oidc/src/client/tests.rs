@@ -7,8 +7,8 @@ use axum::{
 };
 use chrono::Utc;
 use openidconnect::{
-    AccessToken, Audience, AuthUrl, EmptyAdditionalClaims, JsonWebKeySetUrl, ResponseTypes,
-    StandardClaims, SubjectIdentifier, TokenUrl,
+    AccessToken, Audience, AuthUrl, ClientId, ClientSecret, EmptyAdditionalClaims, IssuerUrl,
+    JsonWebKeySetUrl, ResponseTypes, StandardClaims, SubjectIdentifier, TokenUrl,
     core::{
         CoreHmacKey, CoreIdToken, CoreIdTokenClaims, CoreJwsSigningAlgorithm, CoreResponseType,
         CoreSubjectIdentifierType,
@@ -123,14 +123,15 @@ async fn fixture(mode: ResponseMode) -> (OidcClient, Provider, tokio::task::Join
         "https://issuer.example",
         "client",
         "https://files.example/auth/callback",
-    );
-    config.client_secret = Some(SECRET.into());
+    )
+    .unwrap();
+    config.client_secret = Some(ClientSecret::new(SECRET.into()));
     let client = CoreClient::from_provider_metadata(
         metadata,
         ClientId::new("client".into()),
         Some(ClientSecret::new(SECRET.into())),
     )
-    .set_redirect_uri(RedirectUrl::new(config.redirect_uri.clone()).unwrap());
+    .set_redirect_uri(config.redirect_uri.inner().clone());
     (
         OidcClient {
             inner: Arc::new(Inner {
@@ -233,13 +234,12 @@ async fn expired_login_and_insecure_configuration_are_rejected() {
             .await,
         Err(OidcError::InvalidCallback)
     ));
-    let config = OidcConfig::new(
-        "http://issuer.example",
-        "client",
-        "https://files.example/auth/callback",
-    );
     assert!(matches!(
-        OidcClient::discover(config, Sessions::default()).await,
+        OidcConfig::new(
+            "http://issuer.example",
+            "client",
+            "https://files.example/auth/callback"
+        ),
         Err(OidcError::Configuration(_))
     ));
     server.abort();

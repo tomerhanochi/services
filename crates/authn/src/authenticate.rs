@@ -17,13 +17,4 @@ pub trait Authenticate {
         &self,
         ctx: &Self::Context,
     ) -> impl Future<Output = Result<AuthOutcome<Self::Identity>, Self::Error>> + Send;
-
-    /// Tries `next` only if this authenticator is not applicable.
-    fn chain<B>(self, next: B) -> crate::Chain<Self, B>
-    where
-        Self: Sized,
-        B: Authenticate<Context = Self::Context, Identity = Self::Identity>,
-    {
-        crate::Chain(self, next)
-    }
 }

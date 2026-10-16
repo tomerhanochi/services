@@ -2,13 +2,15 @@
 
 use std::{error::Error, fmt};
 
-use authn::Authenticator;
-use authn_oidc::{OidcClient, OidcConfig, OidcError, OidcIdentity, OidcVerifier, Sessions};
-use authn_oidc_axum::{CookieSettings, OidcHttp, SessionCookieExtractor};
-use authn_static::StaticVerifier;
-use authn_static_axum::BasicAuthExtractor;
-use authn_token::{TokenStore, TokenVerifier};
-use authn_token_axum::BearerTokenExtractor;
+use authn::prelude::Authenticator;
+use authn_oidc::prelude::{
+    OidcClient, OidcConfig, OidcError, OidcIdentity, OidcVerifier, Sessions,
+};
+use authn_oidc_axum::prelude::{CookieSettings, OidcHttp, SessionCookieExtractor, SuccessPath};
+use authn_static::prelude::{Password, StaticVerifier, Username};
+use authn_static_axum::prelude::BasicAuthExtractor;
+use authn_token::prelude::{TokenStore, TokenVerifier};
+use authn_token_axum::prelude::BearerTokenExtractor;
 use axum::Router;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,8 +37,8 @@ pub type AppAuthenticator<S> = (
 
 #[derive(Clone)]
 pub struct StaticAuthConfig {
-    pub username: String,
-    pub password: String,
+    pub username: Username,
+    pub password: Password,
 }
 
 impl fmt::Debug for StaticAuthConfig {
@@ -53,7 +55,7 @@ pub struct OidcAuthConfig {
     pub client: OidcConfig,
     pub sessions: Sessions,
     pub cookies: CookieSettings,
-    pub success_path: String,
+    pub success_path: SuccessPath,
 }
 
 impl OidcAuthConfig {
@@ -62,7 +64,7 @@ impl OidcAuthConfig {
             client,
             sessions: Sessions::default(),
             cookies: CookieSettings::default(),
-            success_path: "/".into(),
+            success_path: SuccessPath::new("/").expect("default success path is valid"),
         }
     }
 }
@@ -116,22 +118,13 @@ where
     S: TokenStore<Identity = Identity> + Clone + Sync,
 {
     let credentials = &config.r#static;
-    if credentials.username.is_empty()
-        || credentials.username.contains(':')
-        || credentials.username.chars().any(char::is_control)
-        || credentials.password.is_empty()
-    {
-        return Err(BuildError::StaticCredentials(
-            "break-glass username and password must be nonempty; username cannot contain colon or control characters",
-        ));
-    }
     let static_auth = Authenticator::new(
         BasicAuthExtractor,
         StaticVerifier::with_identity(
             &credentials.username,
             &credentials.password,
             Identity::BreakGlass {
-                username: credentials.username.clone(),
+                username: credentials.username.as_str().to_owned(),
             },
         ),
     );
@@ -179,7 +172,7 @@ where
                 client,
                 config.cookies.clone(),
                 config.success_path.clone(),
-            )?)
+            ))
         }
     };
     Ok(AuthSetup {

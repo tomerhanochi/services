@@ -1,18 +1,15 @@
 use std::{
     collections::HashMap,
     fmt,
-    marker::PhantomData,
     sync::{Arc, Mutex},
     time::SystemTime,
 };
 
-use authn::VerifyCredentials;
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
-use crate::OidcError;
+use crate::prelude::{OidcError, SessionId};
 
 /// Stable identity is the pair `(issuer, subject)`, not the email address.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -21,29 +18,6 @@ pub struct OidcIdentity {
     pub subject: String,
     pub email: Option<String>,
     pub email_verified: bool,
-}
-
-#[derive(Clone)]
-pub struct SessionId(String);
-
-impl SessionId {
-    pub fn from_cookie(value: impl Into<String>) -> Self {
-        Self(value.into())
-    }
-
-    pub fn expose_secret(&self) -> &str {
-        &self.0
-    }
-
-    fn digest(&self) -> [u8; 32] {
-        Sha256::digest(self.0.as_bytes()).into()
-    }
-}
-
-impl fmt::Debug for SessionId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("SessionId([REDACTED])")
-    }
 }
 
 struct Session {
@@ -71,7 +45,7 @@ impl Sessions {
         OsRng
             .try_fill_bytes(&mut bytes)
             .map_err(|error| OidcError::Random(Box::new(error)))?;
-        let id = SessionId(URL_SAFE_NO_PAD.encode(bytes));
+        let id = SessionId::from_cookie(URL_SAFE_NO_PAD.encode(bytes))?;
         let mut sessions = self.0.lock().map_err(|_| OidcError::StoreUnavailable)?;
         sessions.retain(|_, session| session.expires_at > now);
         if sessions.len() >= 10_000 {
@@ -112,31 +86,6 @@ impl Sessions {
 impl fmt::Debug for Sessions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("Sessions { .. }")
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct OidcVerifier<I = OidcIdentity> {
-    sessions: Sessions,
-    identity: PhantomData<fn() -> I>,
-}
-
-impl<I> OidcVerifier<I> {
-    pub fn new(sessions: Sessions) -> Self {
-        Self {
-            sessions,
-            identity: PhantomData,
-        }
-    }
-}
-
-impl<I: From<OidcIdentity>> VerifyCredentials for OidcVerifier<I> {
-    type Credentials = SessionId;
-    type Identity = I;
-    type Error = OidcError;
-
-    async fn verify(&self, id: &SessionId) -> Result<Option<I>, OidcError> {
-        Ok(self.sessions.lookup(id)?.map(I::from))
     }
 }
 

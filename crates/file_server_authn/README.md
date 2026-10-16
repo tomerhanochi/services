@@ -6,10 +6,11 @@ The composition authenticates requests in this order:
 type StaticAuthenticator = Authenticator<BasicAuthExtractor, StaticVerifier<Identity>>;
 type OidcAuthenticator = Authenticator<SessionCookieExtractor, OidcVerifier<Identity>>;
 type TokenAuthenticator<S> = Authenticator<BearerTokenExtractor, TokenVerifier<S>>;
-type AppAuthenticator<S> = Chain<
+type AppAuthenticator<S> = (
     StaticAuthenticator,
-    Chain<Option<OidcAuthenticator>, Option<TokenAuthenticator<S>>>,
->;
+    Option<OidcAuthenticator>,
+    Option<TokenAuthenticator<S>>,
+);
 ```
 
 `S` is your token store. Every mechanism returns the same `Identity` enum, which
@@ -19,11 +20,19 @@ Authorization of OIDC users and API token permissions belongs to the file server
 
 ## Configuration and Axum
 
+Import each authentication crate's public API with `use crate_name::prelude::*`.
+Constructors parse untrusted configuration: `Username::new`, `Password::new`,
+`Token::new`, and `OidcConfig::new` return `Result`. OIDC configuration stores
+HTTPS issuer/callback URL types, a nonempty client ID, and positive lifetimes.
+Use `PositiveDuration::new` to change a lifetime, `ClientSecret::new` for the
+optional client secret, and `Scope::new` for additional scopes. Set a redirect
+with `SuccessPath::new`, which permits local absolute paths.
+
 ```rust,ignore
 let config = AuthConfig {
     r#static: StaticAuthConfig {
-        username: admin_username,
-        password: admin_password,
+        username: Username::new(admin_username)?,
+        password: Password::new(admin_password)?,
     },
     oidc: Some(OidcAuthConfig::new(oidc_client_config)),
     token: Some(TokenAuthConfig { store: your_database_store }),
@@ -48,18 +57,14 @@ for the login routes would make their cookies unusable by the request verifier.
 `None` disables OIDC or API tokens. Basic remains available independently of the
 provider and token database.
 
-The factory builds `static_auth.chain(oidc.chain(token))`, matching the alias above.
-`static_auth.chain(oidc).chain(token)` has the same evaluation order but a different,
-left-associated Rust type.
-
 ## API token store
 
-Implement `authn_token::TokenStore`. It receives a `TokenDigest` (SHA-256), not the
+Implement `authn_token::prelude::TokenStore`. It receives a `TokenDigest` (SHA-256), not the
 raw token, and returns `Result<Option<Identity>, YourError>`. Return `None` for
 unknown, expired, disabled, or revoked tokens; return `Err` when the store cannot
 perform the lookup. Store only digests of cryptographically random API tokens.
 `Token::generate()` creates a random token; persist its `digest()` and return the
-secret to its owner once. `Token::new(secret).digest()` supports provisioning
+secret to its owner once. `Token::new(secret)?.digest()` supports provisioning
 existing tokens.
 
 The store may use a database, remote service, or any other persistence mechanism.
@@ -112,8 +117,9 @@ using cookie authentication still need their own CSRF protection.
 | Token store unavailable | 500; typed source retained |
 
 Each extractor distinguishes its transport: Basic, Bearer, or the configured
-session cookie. Matching malformed credentials become a rejected verification,
-not an extraction error or an absent credential. Duplicate matching Authorization
+session cookie. Extractors return `Extracted::Absent`, `Extracted::Malformed`, or
+`Extracted::Present(parsed_credentials)`. Malformed input stops authentication
+before verification. Duplicate matching Authorization
 headers/cookies are rejected. Header scheme matching is case insensitive.
 
 `Either` preserves which extraction, verification, or chain branch failed, and

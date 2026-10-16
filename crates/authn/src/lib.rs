@@ -7,9 +7,10 @@ mod refrence;
 mod tuple;
 mod verify_credentials;
 
-pub use either::Either;
-
-pub use authenticate::{AuthOutcome, Authenticate};
-pub use authenticator::Authenticator;
-pub use extract_credentials::ExtractCredentials;
-pub use verify_credentials::VerifyCredentials;
+pub mod prelude {
+    pub use crate::authenticate::{AuthOutcome, Authenticate};
+    pub use crate::authenticator::Authenticator;
+    pub use crate::either::Either;
+    pub use crate::extract_credentials::{ExtractCredentials, Extracted};
+    pub use crate::verify_credentials::VerifyCredentials;
+}

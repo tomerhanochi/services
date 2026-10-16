@@ -1,9 +1,18 @@
-//! OIDC authorization-code login using `openidconnect`, followed by opaque sessions.
-
 mod client;
+mod config;
 mod error;
 mod session;
+mod session_id;
+mod verifier;
 
-pub use client::{LoginRequest, OidcClient, OidcConfig};
-pub use error::OidcError;
-pub use session::{OidcIdentity, OidcVerifier, SessionId, Sessions};
+pub mod prelude {
+    pub use crate::client::{LoginRequest, OidcClient};
+    pub use crate::config::{
+        HttpsIssuerUrl, HttpsRedirectUrl, OidcClientId, OidcConfig, PositiveDuration,
+    };
+    pub use crate::error::OidcError;
+    pub use crate::session::{OidcIdentity, Sessions};
+    pub use crate::session_id::SessionId;
+    pub use crate::verifier::OidcVerifier;
+    pub use openidconnect::{ClientSecret, Scope};
+}

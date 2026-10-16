@@ -1,10 +1,12 @@
 //! A composition example. Replace ExampleTokenStore with your persistent TokenStore.
 
+use authn_static::prelude::{Password, Username};
+
 use std::{collections::HashMap, convert::Infallible, env, sync::Arc};
 
-use authn_axum::Authn;
-use authn_oidc::OidcConfig;
-use authn_token::{Token, TokenDigest, TokenStore};
+use authn_axum::prelude::Authn;
+use authn_oidc::prelude::{ClientSecret, OidcConfig};
+use authn_token::prelude::{Token, TokenDigest, TokenStore};
 use axum::{Router, routing::get};
 use file_server_authn::{
     AppAuthenticator, AuthConfig, Identity, OidcAuthConfig, StaticAuthConfig, TokenAuthConfig,
@@ -31,14 +33,18 @@ async fn whoami(Authn(identity): Authn<Auth>) -> String {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let token = env::var("API_TOKEN").ok().map(|secret| TokenAuthConfig {
-        store: ExampleTokenStore(Arc::new(HashMap::from([(
-            Token::new(secret).digest(),
-            Identity::ApiToken {
-                subject: "example-client".into(),
-            },
-        )]))),
-    });
+    let token = match env::var("API_TOKEN") {
+        Ok(secret) => Some(TokenAuthConfig {
+            store: ExampleTokenStore(Arc::new(HashMap::from([(
+                Token::new(secret)?.digest(),
+                Identity::ApiToken {
+                    subject: "example-client".into(),
+                },
+            )]))),
+        }),
+        Err(env::VarError::NotPresent) => None,
+        Err(error) => return Err(error.into()),
+    };
     let oidc = match env::var("OIDC_ISSUER") {
         Err(env::VarError::NotPresent) => None,
         Err(error) => return Err(error.into()),
@@ -47,15 +53,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 issuer,
                 env::var("OIDC_CLIENT_ID")?,
                 env::var("OIDC_REDIRECT_URI")?,
-            );
-            client.client_secret = env::var("OIDC_CLIENT_SECRET").ok();
+            )?;
+            client.client_secret = env::var("OIDC_CLIENT_SECRET").ok().map(ClientSecret::new);
             Some(OidcAuthConfig::new(client))
         }
     };
     let config = AuthConfig {
         r#static: StaticAuthConfig {
-            username: env::var("ADMIN_USERNAME")?,
-            password: env::var("ADMIN_PASSWORD")?,
+            username: Username::new(env::var("ADMIN_USERNAME")?)?,
+            password: Password::new(env::var("ADMIN_PASSWORD")?)?,
         },
         oidc,
         token,

@@ -1,6 +1,6 @@
 use std::{error::Error, fmt, time::Duration};
 
-use authn_oidc::{OidcClient, OidcError, SessionId};
+use authn_oidc::prelude::{OidcClient, OidcError, SessionId};
 use axum::{
     Router,
     extract::{Query, State},
@@ -13,37 +13,24 @@ use axum::{
 };
 use serde::Deserialize;
 
-use crate::CookieSettings;
+use crate::prelude::{CookieSettings, SuccessPath};
+use authn::prelude::Extracted;
 
 /// Routes are relative: `/login`, `/callback`, and POST `/logout`.
 #[derive(Debug, Clone)]
 pub struct OidcHttp {
     client: OidcClient,
     cookies: CookieSettings,
-    success_path: String,
+    success_path: SuccessPath,
 }
 
 impl OidcHttp {
-    pub fn new(
-        client: OidcClient,
-        cookies: CookieSettings,
-        success_path: impl Into<String>,
-    ) -> Result<Self, OidcError> {
-        let success_path = success_path.into();
-        if !success_path.starts_with('/')
-            || success_path.starts_with("//")
-            || success_path.contains('\\')
-            || HeaderValue::from_str(&success_path).is_err()
-        {
-            return Err(OidcError::Configuration(
-                "login success path must be a local absolute path",
-            ));
-        }
-        Ok(Self {
+    pub fn new(client: OidcClient, cookies: CookieSettings, success_path: SuccessPath) -> Self {
+        Self {
             client,
             cookies,
             success_path,
-        })
+        }
     }
 
     pub fn router<S: Clone + Send + Sync + 'static>(&self) -> Router<S> {
@@ -137,21 +124,22 @@ async fn callback(
     }
     let code = query.code.as_deref().ok_or(OidcError::InvalidCallback)?;
     let state = query.state.as_deref().ok_or(OidcError::InvalidCallback)?;
-    let browser_state = http
-        .cookies
-        .login_value(&headers)
-        .ok_or(OidcError::InvalidCallback)?;
+    let Extracted::Present(browser_state) = http.cookies.login_value(&headers) else {
+        return Err(OidcError::InvalidCallback.into());
+    };
     let session = http
         .client
         .complete_login(code, state, browser_state)
         .await?;
     // Replacing a session also revokes the previous browser session.
-    if let Some(previous) = http.cookies.session_value(&headers) {
-        http.client
-            .sessions()
-            .revoke(&SessionId::from_cookie(previous))?;
+    if let Extracted::Present(previous) = http
+        .cookies
+        .session_value(&headers)
+        .parse(SessionId::from_cookie)
+    {
+        http.client.sessions().revoke(&previous)?;
     }
-    let mut response = Redirect::to(&http.success_path).into_response();
+    let mut response = Redirect::to(http.success_path.as_str()).into_response();
     set_cookie(
         &mut response,
         http.cookies
@@ -166,10 +154,12 @@ async fn logout(
     State(http): State<OidcHttp>,
     headers: HeaderMap,
 ) -> Result<Response, OidcHttpError> {
-    if let Some(session) = http.cookies.session_value(&headers) {
-        http.client
-            .sessions()
-            .revoke(&SessionId::from_cookie(session))?;
+    if let Extracted::Present(session) = http
+        .cookies
+        .session_value(&headers)
+        .parse(SessionId::from_cookie)
+    {
+        http.client.sessions().revoke(&session)?;
     }
     let mut response = StatusCode::NO_CONTENT.into_response();
     set_cookie(

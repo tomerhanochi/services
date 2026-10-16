@@ -1,3 +1,4 @@
+use authn_static::prelude::{Password, Username};
 use std::{
     collections::HashMap,
     io,
@@ -8,10 +9,10 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use authn::{AuthOutcome, Authenticate, Either, ExtractCredentials};
-use authn_axum::{Authn, AuthnRejection};
-use authn_oidc::{OidcConfig, OidcIdentity, SessionId};
-use authn_token::{Token, TokenDigest, TokenStore};
+use authn::prelude::{AuthOutcome, Authenticate, Either, ExtractCredentials, Extracted};
+use authn_axum::prelude::{Authn, AuthnRejection};
+use authn_oidc::prelude::{OidcConfig, OidcIdentity, SessionId};
+use authn_token::prelude::{Token, TokenDigest, TokenStore};
 use axum::{
     Router,
     body::Body,
@@ -54,18 +55,21 @@ impl TokenStore for Store {
 fn config() -> AuthConfig<Store> {
     AuthConfig {
         r#static: StaticAuthConfig {
-            username: "admin".into(),
-            password: "secret:with:colons".into(),
+            username: Username::new("admin").unwrap(),
+            password: Password::new("secret:with:colons").unwrap(),
         },
-        oidc: Some(OidcAuthConfig::new(OidcConfig::new(
-            "https://issuer.example",
-            "client",
-            "https://files.example/auth/callback",
-        ))),
+        oidc: Some(OidcAuthConfig::new(
+            OidcConfig::new(
+                "https://issuer.example",
+                "client",
+                "https://files.example/auth/callback",
+            )
+            .unwrap(),
+        )),
         token: Some(TokenAuthConfig {
             store: Store {
                 identities: Arc::new(HashMap::from([(
-                    Token::new("valid-token").digest(),
+                    Token::new("valid-token").unwrap().digest(),
                     Identity::ApiToken {
                         subject: "service".into(),
                     },
@@ -335,22 +339,19 @@ async fn composition_works_in_a_real_axum_router() {
 
 #[test]
 fn invalid_config_is_rejected_and_secrets_are_redacted() {
-    let mut config = config();
+    let config = config();
     let debug = format!("{config:?}");
     assert!(!debug.contains("secret:with:colons"));
-    assert!(!format!("{:?}", Token::new("valid-token")).contains("valid-token"));
-    config.r#static.password.clear();
-    assert!(authenticator(&config).is_err());
-    config.r#static.password = "secret".into();
-    config.r#static.username = "user:with:colon".into();
-    assert!(authenticator(&config).is_err());
+    assert!(!format!("{:?}", Token::new("valid-token").unwrap()).contains("valid-token"));
+    assert!(Password::new("").is_err());
+    assert!(Username::new("user:with:colon").is_err());
 }
 
 #[tokio::test]
 async fn custom_cookie_names_and_multiple_cookie_headers_work() {
     let mut config = config();
     config.oidc.as_mut().unwrap().cookies =
-        authn_oidc_axum::CookieSettings::new("files_session").unwrap();
+        authn_oidc_axum::prelude::CookieSettings::new("files_session").unwrap();
     let id = issue(&config);
     let mut parts = request(None, Some("theme=dark"));
     parts.headers.append(
@@ -360,7 +361,10 @@ async fn custom_cookie_names_and_multiple_cookie_headers_work() {
             .unwrap(),
     );
     let extractor = config.oidc.as_ref().unwrap().cookies.extractor();
-    assert!(extractor.extract(&parts).unwrap().is_some());
+    assert!(matches!(
+        extractor.extract(&parts).unwrap(),
+        Extracted::Present(_)
+    ));
     assert!(matches!(
         authenticator(&config)
             .unwrap()

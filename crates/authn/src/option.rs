@@ -1,4 +1,4 @@
-use crate::{AuthOutcome, Authenticate};
+use crate::prelude::{AuthOutcome, Authenticate};
 
 impl<A> Authenticate for Option<A>
 where

@@ -1,14 +1,15 @@
 use std::{convert::Infallible, time::Duration};
 
-use authn::ExtractCredentials;
-use authn_oidc::{OidcError, SessionId};
+use crate::cookie_name::CookieName;
+use authn::prelude::{ExtractCredentials, Extracted};
+use authn_oidc::prelude::{OidcError, SessionId};
 use axum::http::{HeaderMap, header::COOKIE, request::Parts};
 use cookie::{Cookie, SameSite};
 
 #[derive(Debug, Clone)]
 pub struct CookieSettings {
-    session_name: String,
-    login_name: String,
+    session_name: CookieName,
+    login_name: CookieName,
 }
 
 impl Default for CookieSettings {
@@ -19,16 +20,8 @@ impl Default for CookieSettings {
 
 impl CookieSettings {
     pub fn new(session_name: impl Into<String>) -> Result<Self, OidcError> {
-        let session_name = session_name.into();
-        if session_name.is_empty()
-            || session_name.len() > 128
-            || !session_name
-                .bytes()
-                .all(|byte| byte.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&byte))
-        {
-            return Err(OidcError::Configuration("invalid session cookie name"));
-        }
-        let login_name = format!("{session_name}-login");
+        let session_name = CookieName::new(session_name)?;
+        let login_name = CookieName::new(format!("{}-login", session_name.as_str()))?;
         Ok(Self {
             session_name,
             login_name,
@@ -36,7 +29,7 @@ impl CookieSettings {
     }
 
     pub fn session_name(&self) -> &str {
-        &self.session_name
+        self.session_name.as_str()
     }
 
     pub fn extractor(&self) -> SessionCookieExtractor {
@@ -45,20 +38,20 @@ impl CookieSettings {
         }
     }
 
-    pub(crate) fn login_value<'a>(&self, headers: &'a HeaderMap) -> Option<&'a str> {
-        cookie_value(headers, &self.login_name)
+    pub(crate) fn login_value<'a>(&self, headers: &'a HeaderMap) -> Extracted<&'a str> {
+        cookie_value(headers, self.login_name.as_str())
     }
 
-    pub(crate) fn session_value<'a>(&self, headers: &'a HeaderMap) -> Option<&'a str> {
-        cookie_value(headers, &self.session_name)
+    pub(crate) fn session_value<'a>(&self, headers: &'a HeaderMap) -> Extracted<&'a str> {
+        cookie_value(headers, self.session_name.as_str())
     }
 
     pub(crate) fn session_header(&self, value: &str, ttl: Duration) -> String {
-        cookie_header(&self.session_name, value, ttl)
+        cookie_header(self.session_name.as_str(), value, ttl)
     }
 
     pub(crate) fn login_header(&self, value: &str, ttl: Duration) -> String {
-        cookie_header(&self.login_name, value, ttl)
+        cookie_header(self.login_name.as_str(), value, ttl)
     }
 }
 
@@ -75,17 +68,17 @@ fn cookie_header(name: &str, value: &str, ttl: Duration) -> String {
         .to_string()
 }
 
-/// A duplicate or malformed cookie is an invalid credential, represented by `""`.
-fn cookie_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+/// A duplicate or malformed cookie is an invalid credential, represented explicitly.
+fn cookie_value<'a>(headers: &'a HeaderMap, name: &str) -> Extracted<&'a str> {
     let mut value = None;
     for header in headers.get_all(COOKIE) {
         let Ok(header) = header.to_str() else {
-            return Some("");
+            return Extracted::Malformed;
         };
         for pair in header.split(';').map(str::trim) {
             let Some((key, candidate)) = pair.split_once('=') else {
                 if pair == name {
-                    return Some("");
+                    return Extracted::Malformed;
                 }
                 continue;
             };
@@ -93,17 +86,17 @@ fn cookie_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
                 continue;
             }
             if value.is_some() {
-                return Some("");
+                return Extracted::Malformed;
             }
             value = Some(candidate);
         }
     }
-    value
+    value.map_or(Extracted::Absent, Extracted::Present)
 }
 
 #[derive(Debug, Clone)]
 pub struct SessionCookieExtractor {
-    name: String,
+    name: CookieName,
 }
 
 impl Default for SessionCookieExtractor {
@@ -123,8 +116,8 @@ impl ExtractCredentials for SessionCookieExtractor {
     type Credentials = SessionId;
     type Error = Infallible;
 
-    fn extract(&self, parts: &Parts) -> Result<Option<SessionId>, Infallible> {
-        Ok(cookie_value(&parts.headers, &self.name).map(SessionId::from_cookie))
+    fn extract(&self, parts: &Parts) -> Result<Extracted<SessionId>, Infallible> {
+        Ok(cookie_value(&parts.headers, self.name.as_str()).parse(SessionId::from_cookie))
     }
 }
 

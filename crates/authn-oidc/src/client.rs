@@ -6,16 +6,15 @@ use std::{
 };
 
 use openidconnect::{
-    AccessTokenHash, AuthorizationCode, ClaimsVerificationError, ClientId, ClientSecret, CsrfToken,
-    EndpointMaybeSet, EndpointNotSet, EndpointSet, IssuerUrl, JsonWebKey, JwsSigningAlgorithm,
-    Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope,
-    SignatureVerificationError, TokenResponse,
+    AccessTokenHash, AuthorizationCode, ClaimsVerificationError, CsrfToken, EndpointMaybeSet,
+    EndpointNotSet, EndpointSet, JsonWebKey, JwsSigningAlgorithm, Nonce, OAuth2TokenResponse,
+    PkceCodeChallenge, PkceCodeVerifier, SignatureVerificationError, TokenResponse,
     core::{CoreAuthenticationFlow, CoreClient, CoreJsonWebKey, CoreProviderMetadata},
     reqwest,
 };
 use subtle::ConstantTimeEq;
 
-use crate::{OidcError, OidcIdentity, SessionId, Sessions};
+use crate::prelude::{OidcConfig, OidcError, OidcIdentity, SessionId, Sessions};
 
 type DiscoveredClient = CoreClient<
     EndpointSet,
@@ -25,46 +24,6 @@ type DiscoveredClient = CoreClient<
     EndpointMaybeSet,
     EndpointMaybeSet,
 >;
-
-#[derive(Clone)]
-pub struct OidcConfig {
-    pub issuer: String,
-    pub client_id: String,
-    pub client_secret: Option<String>,
-    pub redirect_uri: String,
-    pub scopes: Vec<String>,
-    pub session_ttl: Duration,
-    pub login_ttl: Duration,
-}
-
-impl OidcConfig {
-    pub fn new(
-        issuer: impl Into<String>,
-        client_id: impl Into<String>,
-        redirect_uri: impl Into<String>,
-    ) -> Self {
-        Self {
-            issuer: issuer.into(),
-            client_id: client_id.into(),
-            redirect_uri: redirect_uri.into(),
-            client_secret: None,
-            scopes: vec!["email".into(), "profile".into()],
-            session_ttl: Duration::from_secs(3600),
-            login_ttl: Duration::from_secs(600),
-        }
-    }
-}
-
-impl fmt::Debug for OidcConfig {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OidcConfig")
-            .field("issuer", &self.issuer)
-            .field("client_id", &self.client_id)
-            .field("redirect_uri", &self.redirect_uri)
-            .field("client_secret", &"[REDACTED]")
-            .finish_non_exhaustive()
-    }
-}
 
 struct PendingLogin {
     nonce: Nonce,
@@ -93,28 +52,13 @@ struct Inner {
 
 impl OidcClient {
     pub async fn discover(config: OidcConfig, sessions: Sessions) -> Result<Self, OidcError> {
-        if config.client_id.is_empty() || config.session_ttl.is_zero() || config.login_ttl.is_zero()
-        {
-            return Err(OidcError::Configuration(
-                "client ID and positive session/login lifetimes are required",
-            ));
-        }
-        let issuer = IssuerUrl::new(config.issuer.clone())
-            .map_err(|_| OidcError::Configuration("invalid OIDC issuer URL"))?;
-        let redirect = RedirectUrl::new(config.redirect_uri.clone())
-            .map_err(|_| OidcError::Configuration("invalid OIDC callback URL"))?;
-        if issuer.url().scheme() != "https" || redirect.url().scheme() != "https" {
-            return Err(OidcError::Configuration(
-                "OIDC issuer and callback URLs must use HTTPS",
-            ));
-        }
         let http = reqwest::Client::builder()
             .https_only(true)
             .redirect(reqwest::redirect::Policy::none())
             .timeout(Duration::from_secs(30))
             .build()
             .map_err(|error| OidcError::Provider(Box::new(error)))?;
-        let metadata = CoreProviderMetadata::discover_async(issuer, &http)
+        let metadata = CoreProviderMetadata::discover_async(config.issuer.inner().clone(), &http)
             .await
             .map_err(|error| OidcError::Provider(Box::new(error)))?;
         if metadata.authorization_endpoint().url().scheme() != "https"
@@ -129,10 +73,10 @@ impl OidcClient {
         }
         let client = CoreClient::from_provider_metadata(
             metadata,
-            ClientId::new(config.client_id.clone()),
-            config.client_secret.clone().map(ClientSecret::new),
+            config.client_id.inner().clone(),
+            config.client_secret.clone(),
         )
-        .set_redirect_uri(redirect);
+        .set_redirect_uri(config.redirect_uri.inner().clone());
         Ok(Self {
             inner: Arc::new(Inner {
                 client: Mutex::new(client),
@@ -169,11 +113,11 @@ impl OidcClient {
     }
 
     pub fn session_ttl(&self) -> Duration {
-        self.inner.config.session_ttl
+        self.inner.config.session_ttl.get()
     }
 
     pub fn login_ttl(&self) -> Duration {
-        self.inner.config.login_ttl
+        self.inner.config.login_ttl.get()
     }
 
     pub fn begin_login(&self) -> Result<LoginRequest, OidcError> {
@@ -187,7 +131,7 @@ impl OidcClient {
             )
             .set_pkce_challenge(challenge);
         for scope in &self.inner.config.scopes {
-            request = request.add_scope(Scope::new(scope.clone()));
+            request = request.add_scope(scope.clone());
         }
         let (url, state, nonce) = request.url();
         let now = SystemTime::now();
@@ -281,7 +225,7 @@ impl OidcClient {
                     .client_secret
                     .as_ref()
                     .ok_or(OidcError::InvalidCallback)?;
-                CoreJsonWebKey::new_symmetric(secret.as_bytes().to_vec())
+                CoreJsonWebKey::new_symmetric(secret.secret().as_bytes().to_vec())
             } else {
                 token
                     .signing_key(&verifier)

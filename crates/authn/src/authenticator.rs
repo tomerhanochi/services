@@ -1,6 +1,8 @@
 use std::error::Error;
 
-use crate::{AuthOutcome, Authenticate, Either, ExtractCredentials, VerifyCredentials};
+use crate::prelude::{
+    AuthOutcome, Authenticate, Either, ExtractCredentials, Extracted, VerifyCredentials,
+};
 
 #[derive(Debug, Clone)]
 pub struct Authenticator<E, V> {
@@ -36,8 +38,10 @@ where
         &self,
         ctx: &Self::Context,
     ) -> Result<AuthOutcome<Self::Identity>, Self::Error> {
-        let Some(creds) = self.extractor.extract(ctx).map_err(Either::Left)? else {
-            return Ok(AuthOutcome::NotApplicable);
+        let creds = match self.extractor.extract(ctx).map_err(Either::Left)? {
+            Extracted::Absent => return Ok(AuthOutcome::NotApplicable),
+            Extracted::Malformed => return Ok(AuthOutcome::Rejected),
+            Extracted::Present(creds) => creds,
         };
         let Some(identity) = self.verifier.verify(&creds).await.map_err(Either::Right)? else {
             return Ok(AuthOutcome::Rejected);
