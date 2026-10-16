@@ -25,7 +25,7 @@ use axum::{
     routing::get,
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
-use file_server_authn::{
+use file_server_authn::prelude::{
     AppAuthenticator, AuthConfig, Identity, OidcAuthConfig, StaticAuthConfig, TokenAuthConfig,
     authenticator,
 };

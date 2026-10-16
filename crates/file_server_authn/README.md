@@ -20,7 +20,8 @@ Authorization of OIDC users and API token permissions belongs to the file server
 
 ## Configuration and Axum
 
-Import each authentication crate's public API with `use crate_name::prelude::*`.
+Import each authentication crate's public API with `use crate_name::prelude::*`,
+including `use file_server_authn::prelude::*` for the composition API.
 Constructors parse untrusted configuration: `Username::new`, `Password::new`,
 `Token::new`, and `OidcConfig::new` return `Result`. OIDC configuration stores
 HTTPS issuer/callback URL types, a nonempty client ID, and positive lifetimes.

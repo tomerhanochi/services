@@ -8,7 +8,7 @@ use authn_axum::prelude::Authn;
 use authn_oidc::prelude::{ClientSecret, OidcConfig};
 use authn_token::prelude::{Token, TokenDigest, TokenStore};
 use axum::{Router, routing::get};
-use file_server_authn::{
+use file_server_authn::prelude::{
     AppAuthenticator, AuthConfig, Identity, OidcAuthConfig, StaticAuthConfig, TokenAuthConfig,
     configure,
 };
