@@ -7,8 +7,7 @@ publish.workspace = true
 [dependencies]
 authn-identity = { path = "../authn-identity" }
 authn-static = { path = "../authn-static" }
-cap-std = { workspace = true }
-tokio = { workspace = true, features = ["rt"] }
+tokio = { workspace = true, features = ["fs", "io-util"] }
 
 [dev-dependencies]
 argon2 = { workspace = true }

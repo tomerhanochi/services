@@ -1,7 +1,6 @@
 use authn_identity::prelude::{Identity, Machine, MachineId, User, UserId};
 use authn_static::prelude::{Password, StaticAccount, StaticStore, Username};
 use authn_static_directory::prelude::DirectoryStore;
-use cap_std::{ambient_authority, fs::Dir};
 use std::{
     collections::HashMap,
     io,
@@ -100,9 +99,7 @@ fn config() -> TestConfig {
     AuthConfig {
         r#static: StaticAuthConfig {
             store: MountedUsers {
-                store: DirectoryStore::new(
-                    Dir::open_ambient_dir(directory.path(), ambient_authority()).unwrap(),
-                ),
+                store: DirectoryStore::new(directory.path()),
                 _directory: directory,
             },
         },

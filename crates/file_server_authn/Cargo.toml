@@ -16,7 +16,6 @@ authn-static-axum = { path = "../authn-static-axum" }
 authn-oidc = { path = "../authn-oidc" }
 authn-oidc-axum = { path = "../authn-oidc-axum" }
 axum = { workspace = true }
-cap-std = { workspace = true }
 
 [dev-dependencies]
 argon2 = { workspace = true }
