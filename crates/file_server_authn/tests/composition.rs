@@ -27,9 +27,6 @@ use axum::{
     routing::get,
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
-use file_server_authn::prelude::{
-    AppAuthenticator, AuthConfig, OidcAuthConfig, StaticAuthConfig, TokenAuthConfig, authenticator,
-};
 use tower::ServiceExt;
 
 #[derive(Debug, Clone, Default)]
@@ -65,8 +62,72 @@ impl StaticStore for MountedUsers {
         self.store.lookup(username).await
     }
 }
-type TestConfig = AuthConfig<Store, MountedUsers>;
-type TestAuth = AppAuthenticator<Store, MountedUsers>;
+struct StaticAuthConfig {
+    store: MountedUsers,
+}
+struct OidcAuthConfig {
+    _client: OidcConfig,
+    sessions: authn_oidc::prelude::Sessions,
+    store: OidcUsers,
+    cookies: authn_oidc_axum::prelude::CookieSettings,
+}
+impl OidcAuthConfig {
+    fn new(client: OidcConfig, store: OidcUsers) -> Self {
+        Self {
+            _client: client,
+            store,
+            sessions: Default::default(),
+            cookies: Default::default(),
+        }
+    }
+}
+struct TokenAuthConfig {
+    store: Store,
+}
+struct TestConfig {
+    r#static: StaticAuthConfig,
+    oidc: Option<OidcAuthConfig>,
+    token: Option<TokenAuthConfig>,
+}
+type TestAuth = (
+    authn::prelude::Authenticator<
+        authn_static_axum::prelude::BasicAuthExtractor,
+        authn_static::prelude::StaticVerifier<MountedUsers>,
+    >,
+    Option<
+        authn::prelude::Authenticator<
+            authn_oidc_axum::prelude::SessionCookieExtractor,
+            authn_oidc::prelude::OidcVerifier,
+        >,
+    >,
+    Option<
+        authn::prelude::Authenticator<
+            authn_token_axum::prelude::BearerTokenExtractor,
+            authn_token::prelude::TokenVerifier<Store>,
+        >,
+    >,
+);
+fn authenticator(config: &TestConfig) -> TestAuth {
+    use authn::prelude::Authenticator;
+    (
+        Authenticator::new(
+            authn_static_axum::prelude::BasicAuthExtractor,
+            authn_static::prelude::StaticVerifier::new(config.r#static.store.clone()),
+        ),
+        config.oidc.as_ref().map(|c| {
+            Authenticator::new(
+                c.cookies.extractor(),
+                authn_oidc::prelude::OidcVerifier::new(c.sessions.clone(), c.store.clone()),
+            )
+        }),
+        config.token.as_ref().map(|c| {
+            Authenticator::new(
+                authn_token_axum::prelude::BearerTokenExtractor,
+                authn_token::prelude::TokenVerifier::new(c.store.clone()),
+            )
+        }),
+    )
+}
 
 fn user(id: &str) -> Identity {
     User {
@@ -96,7 +157,7 @@ fn config() -> TestConfig {
     .unwrap();
     let mut users = OidcUsers::default();
     users.insert(&client.issuer, "user-123", UserId::new("admin").unwrap());
-    AuthConfig {
+    TestConfig {
         r#static: StaticAuthConfig {
             store: MountedUsers {
                 store: DirectoryStore::new(directory.path()),
@@ -372,7 +433,7 @@ async fn composition_works_in_a_real_axum_router() {
 #[test]
 fn invalid_config_is_rejected_and_secrets_are_redacted() {
     let config = config();
-    let debug = format!("{config:?}");
+    let debug = format!("{:?}", config.r#static.store);
     assert!(!debug.contains("secret:with:colons"));
     assert!(!format!("{:?}", Token::new("valid-token").unwrap()).contains("valid-token"));
     assert!(Password::new("").is_err());

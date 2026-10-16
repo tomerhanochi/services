@@ -1,22 +1,23 @@
-use crate::{
-    authenticator::{AppAuthenticator, authenticator},
-    config::AuthConfig,
-    error::BuildError,
+use crate::{authenticator::AppAuthenticator, config::AuthConfig, error::BuildError, token_store};
+use authn::prelude::Authenticator;
+use authn_oidc::prelude::{
+    ClientSecret, OidcClient, OidcConfig, OidcUsers, OidcVerifier, PositiveDuration, Scope,
+    Sessions,
 };
-use authn_identity::prelude::Identity;
-use authn_oidc::prelude::{OidcClient, OidcIdentityStore, OidcUsers};
-use authn_oidc_axum::prelude::OidcHttp;
-use authn_static::prelude::StaticStore;
+use authn_oidc_axum::prelude::{CookieSettings, OidcHttp, SuccessPath};
+use authn_static::prelude::StaticVerifier;
+use authn_static_axum::prelude::BasicAuthExtractor;
 use authn_static_directory::prelude::DirectoryStore;
-use authn_token::prelude::TokenStore;
+use authn_token::prelude::TokenVerifier;
+use authn_token_axum::prelude::BearerTokenExtractor;
 use axum::Router;
+use std::time::Duration;
 
-pub struct AuthSetup<T, S = DirectoryStore, O = OidcUsers> {
-    pub authenticator: AppAuthenticator<T, S, O>,
+pub struct AuthSetup {
+    pub authenticator: AppAuthenticator,
     pub oidc: Option<OidcHttp>,
 }
-impl<T, S, O> AuthSetup<T, S, O> {
-    /// Mount with `.nest("/auth", setup.routes())` and use `/auth/callback` as redirect URI.
+impl AuthSetup {
     pub fn routes<State: Clone + Send + Sync + 'static>(&self) -> Router<State> {
         self.oidc
             .as_ref()
@@ -24,30 +25,53 @@ impl<T, S, O> AuthSetup<T, S, O> {
     }
 }
 
-/// Initializes OIDC discovery and returns request authentication plus its login routes.
-pub async fn configure<T, S, O>(
-    config: &AuthConfig<T, S, O>,
-) -> Result<AuthSetup<T, S, O>, BuildError>
-where
-    T: TokenStore<Identity = Identity> + Clone + Sync,
-    S: StaticStore<Identity = Identity> + Clone + Sync,
-    O: OidcIdentityStore + Clone + Sync,
-{
-    let authenticator = authenticator(config);
-    let oidc = match &config.oidc {
-        None => None,
-        Some(config) => {
-            let client =
-                OidcClient::discover(config.client.clone(), config.sessions.clone()).await?;
-            Some(OidcHttp::new(
-                client,
-                config.cookies.clone(),
-                config.success_path.clone(),
-            ))
+/// Constructs stores, sessions, discovery clients and request authentication from config values.
+pub async fn configure(config: &AuthConfig) -> Result<AuthSetup, BuildError> {
+    if config.r#static.is_none() && config.oidc.is_none() && config.token.is_none() {
+        return Err(BuildError::NoMechanisms);
+    }
+    let static_auth = config.r#static.as_ref().map(|config| {
+        Authenticator::new(
+            BasicAuthExtractor,
+            StaticVerifier::new(DirectoryStore::new(config.directory.clone())),
+        )
+    });
+    let (oidc_auth, oidc) = if let Some(config) = &config.oidc {
+        let mut client_config =
+            OidcConfig::new(&config.issuer, &config.client_id, &config.redirect_uri)?;
+        client_config.client_secret = config.client_secret.clone().map(ClientSecret::new);
+        client_config.scopes = config.scopes.iter().cloned().map(Scope::new).collect();
+        client_config.session_ttl =
+            PositiveDuration::new(Duration::from_secs(config.session_ttl_secs))?;
+        client_config.login_ttl =
+            PositiveDuration::new(Duration::from_secs(config.login_ttl_secs))?;
+        let cookies = CookieSettings::new(&config.cookie_name)?;
+        let success = SuccessPath::new(&config.success_path)?;
+        let mut users = OidcUsers::default();
+        for (subject, user) in &config.users {
+            users.insert(&client_config.issuer, subject, user.clone());
         }
+        let sessions = Sessions::default();
+        let client = OidcClient::discover(client_config, sessions.clone()).await?;
+        (
+            Some(Authenticator::new(
+                cookies.extractor(),
+                OidcVerifier::new(sessions, users),
+            )),
+            Some(OidcHttp::new(client, cookies, success)),
+        )
+    } else {
+        (None, None)
+    };
+    let token = match &config.token {
+        Some(config) => Some(Authenticator::new(
+            BearerTokenExtractor,
+            TokenVerifier::new(token_store::connect(config).await?),
+        )),
+        None => None,
     };
     Ok(AuthSetup {
-        authenticator,
+        authenticator: (static_auth, oidc_auth, token),
         oidc,
     })
 }
