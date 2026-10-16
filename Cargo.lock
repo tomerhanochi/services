@@ -742,6 +742,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "file_server_core"
+version = "0.1.0"
+dependencies = [
+ "authn-identity",
+ "serde",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
+name = "file_server_fs"
+version = "0.1.0"
+dependencies = [
+ "file_server_core",
+ "rustix",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
