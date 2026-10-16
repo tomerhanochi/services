@@ -18,7 +18,6 @@ use authn_oidc::prelude::*;
 use authn_static::prelude::*;
 use authn_static_directory::prelude::*;
 use file_server_authn::prelude::*;
-use cap_std::{fs::Dir, ambient_authority};
 
 let client = OidcConfig::new(
     "https://issuer.example",
@@ -30,9 +29,7 @@ users.insert(&client.issuer, "provider-subject", UserId::new("alice")?);
 
 let config = AuthConfig {
     r#static: StaticAuthConfig {
-        store: DirectoryStore::new(Dir::open_ambient_dir(
-            "/run/secrets/file-users", ambient_authority(),
-        )?),
+        store: DirectoryStore::new("/run/secrets/file-users"),
     },
     oidc: Some(OidcAuthConfig::new(client, users)),
     token: Some(TokenAuthConfig { store: your_token_store }),
@@ -79,23 +76,12 @@ Hash verification runs on a blocking worker. Wrong passwords reject
 authentication; store, hash-verification, and worker failures preserve their
 source through `Either` and `PasswordVerificationError`.
 
-`authn-static-directory` supplies `DirectoryStore`, which accepts an already-open
-`cap_std::fs::Dir`. Opening an ambient path is the application's responsibility;
-the store retains only the directory capability. Each filename identifies a local
-`UserId`, and its contents must be an Argon2id PHC hash:
-
-```text
-/run/secrets/file-users/
-    alice       # contents: $argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>
-    bob         # contents: another independently salted Argon2id PHC hash
-```
-
-The store opens and reads each file through `Dir` on a blocking worker for every
-lookup. It follows Kubernetes' projected symlinks within the granted directory;
-cap-std enforces confinement during filesystem operations. No canonicalization
-or preflight filesystem metadata checks precede the open. Errors from opening
-and reading are handled directly. The capability continues referring to the
-same directory if its ambient path is renamed or replaced.
+`authn-static-directory` supplies `DirectoryStore`, which accepts the path of a
+trusted mounted directory. Filenames identify local users and file contents are
+Argon2id PHC hashes. Tokio opens and reads each file on every lookup, handling
+open/read errors directly. Relative symlinks used by Kubernetes projected volumes
+are supported. The application must control the directory and its symlinks; this
+path-based adapter does not provide a capability sandbox.
 
 Usernames must be single filenames containing ASCII letters, digits, `-`, `_`,
 or `.`, at most 255 bytes long; `.` and names starting with `..` are excluded.

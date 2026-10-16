@@ -1,9 +1,7 @@
-use authn::prelude::Either;
 use authn::prelude::VerifyCredentials;
 use authn_identity::prelude::*;
 use authn_static::prelude::*;
 use authn_static_directory::prelude::*;
-use cap_std::{ambient_authority, fs::Dir};
 use std::{io, sync::Arc};
 
 fn credentials(value: &str) -> BasicCredentials {
@@ -16,9 +14,7 @@ async fn directory_accounts_follow_password_changes_and_removals() {
     let path = directory.path().join("alice");
     std::fs::write(&path, encoded_hash("first:password")).unwrap();
     std::fs::write(directory.path().join("bob"), encoded_hash("second")).unwrap();
-    let verifier = StaticVerifier::new(Arc::new(DirectoryStore::new(
-        Dir::open_ambient_dir(directory.path(), ambient_authority()).unwrap(),
-    )));
+    let verifier = StaticVerifier::new(Arc::new(DirectoryStore::new(directory.path())));
     let expected = Identity::User(User {
         id: UserId::new("alice").unwrap(),
     });
@@ -85,8 +81,7 @@ async fn directory_accounts_follow_password_changes_and_removals() {
 #[tokio::test]
 async fn invalid_hash_files_and_read_failures_are_operational_errors() {
     let directory = tempfile::tempdir().unwrap();
-    let store =
-        DirectoryStore::new(Dir::open_ambient_dir(directory.path(), ambient_authority()).unwrap());
+    let store = DirectoryStore::new(directory.path());
     let username = Username::new("alice").unwrap();
     for contents in [
         vec![],
@@ -105,15 +100,13 @@ async fn invalid_hash_files_and_read_failures_are_operational_errors() {
 }
 
 #[tokio::test]
-async fn directory_capability_survives_renames_and_does_not_follow_replacement_paths() {
+async fn directory_lookups_use_the_current_configured_path() {
     let parent = tempfile::tempdir().unwrap();
     let original = parent.path().join("accounts");
     let moved = parent.path().join("moved-accounts");
     std::fs::create_dir(&original).unwrap();
     std::fs::write(original.join("alice"), encoded_hash("original")).unwrap();
-    let verifier = StaticVerifier::new(DirectoryStore::new(
-        Dir::open_ambient_dir(&original, ambient_authority()).unwrap(),
-    ));
+    let verifier = StaticVerifier::new(DirectoryStore::new(&original));
     std::fs::rename(&original, &moved).unwrap();
     std::fs::create_dir(&original).unwrap();
     std::fs::write(original.join("alice"), encoded_hash("replacement")).unwrap();
@@ -122,22 +115,21 @@ async fn directory_capability_survives_renames_and_does_not_follow_replacement_p
             .verify(&credentials("alice:original"))
             .await
             .unwrap()
-            .is_some()
+            .is_none()
     );
     assert!(
         verifier
             .verify(&credentials("alice:replacement"))
             .await
             .unwrap()
-            .is_none()
+            .is_some()
     );
 }
 
 #[tokio::test]
 async fn hash_files_accept_a_single_text_line_ending() {
     let directory = tempfile::tempdir().unwrap();
-    let store =
-        DirectoryStore::new(Dir::open_ambient_dir(directory.path(), ambient_authority()).unwrap());
+    let store = DirectoryStore::new(directory.path());
     let hash = encoded_hash("password");
     for suffix in ["", "\n", "\r\n"] {
         std::fs::write(directory.path().join("alice"), format!("{hash}{suffix}")).unwrap();
@@ -161,9 +153,7 @@ async fn hash_files_accept_a_single_text_line_ending() {
 #[tokio::test]
 async fn requests_cannot_select_paths_or_kubernetes_metadata() {
     let directory = tempfile::tempdir().unwrap();
-    let verifier = StaticVerifier::new(DirectoryStore::new(
-        Dir::open_ambient_dir(directory.path(), ambient_authority()).unwrap(),
-    ));
+    let verifier = StaticVerifier::new(DirectoryStore::new(directory.path()));
     for username in [
         "../alice",
         "/etc/passwd",
@@ -200,9 +190,7 @@ async fn kubernetes_symlink_rotation_is_read_on_each_lookup() {
     }
     symlink("..first", directory.path().join("..data")).unwrap();
     symlink("..data/alice", directory.path().join("alice")).unwrap();
-    let verifier = StaticVerifier::new(DirectoryStore::new(
-        Dir::open_ambient_dir(directory.path(), ambient_authority()).unwrap(),
-    ));
+    let verifier = StaticVerifier::new(DirectoryStore::new(directory.path()));
     assert!(
         verifier
             .verify(&credentials("alice:old"))
@@ -230,27 +218,6 @@ async fn kubernetes_symlink_rotation_is_read_on_each_lookup() {
             .unwrap()
             .is_some()
     );
-}
-
-#[cfg(unix)]
-#[tokio::test]
-async fn symlinks_cannot_read_secrets_outside_the_configured_directory() {
-    use std::os::unix::fs::symlink;
-    let directory = tempfile::tempdir().unwrap();
-    let outside = tempfile::NamedTempFile::new().unwrap();
-    std::fs::write(outside.path(), encoded_hash("password")).unwrap();
-    symlink(outside.path(), directory.path().join("alice")).unwrap();
-    let verifier = StaticVerifier::new(DirectoryStore::new(
-        Dir::open_ambient_dir(directory.path(), ambient_authority()).unwrap(),
-    ));
-    let Either::Left(error) = verifier
-        .verify(&credentials("alice:password"))
-        .await
-        .unwrap_err()
-    else {
-        panic!("expected capability error")
-    };
-    assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
 }
 
 fn encoded_hash(password: &str) -> String {

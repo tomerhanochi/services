@@ -1,7 +1,5 @@
 //! A composition example. Replace ExampleTokenStore with your persistent TokenStore.
 
-use cap_std::{ambient_authority, fs::Dir};
-
 use authn_static_directory::prelude::DirectoryStore;
 
 use std::{collections::HashMap, convert::Infallible, env, sync::Arc};
@@ -68,10 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let config = AuthConfig {
         r#static: StaticAuthConfig {
-            store: DirectoryStore::new(Dir::open_ambient_dir(
-                env::var("STATIC_AUTH_DIRECTORY")?,
-                ambient_authority(),
-            )?),
+            store: DirectoryStore::new(env::var("STATIC_AUTH_DIRECTORY")?),
         },
         oidc,
         token,
