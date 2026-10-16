@@ -11,7 +11,7 @@ async fn configured_postgres_tokens_enforce_revocation_and_expiry() {
     let setup = configure(&AuthConfig {
         token: Some(TokenAuthConfig {
             database_url: url.clone(),
-            max_connections: 2,
+            max_connections: 2.try_into().unwrap(),
         }),
         ..Default::default()
     })

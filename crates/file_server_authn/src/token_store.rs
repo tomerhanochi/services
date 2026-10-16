@@ -20,7 +20,7 @@ pub(crate) async fn connect(
     config: &crate::config::TokenAuthConfig,
 ) -> Result<PostgresTokens, sqlx::Error> {
     let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(config.max_connections)
+        .max_connections(config.max_connections.get())
         .acquire_timeout(std::time::Duration::from_secs(10))
         .connect(&config.database_url)
         .await?;
