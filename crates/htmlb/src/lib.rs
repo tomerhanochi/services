@@ -93,7 +93,7 @@ pub use attrs::{
 };
 pub use class::{ClassList, Classes};
 pub use component::Component;
-pub use components::{color_scheme, script, stylesheet, viewport};
+pub use components::{color_scheme, favicon, script, stylesheet, viewport};
 pub use containers::{ClonedIterHtml, Either, IterHtml, IteratorExt};
 pub use elements::{Child, El, HasChildren, Kind, Tag, Unescaped, kind, tag, *};
 pub use text::{Display, Doctype, Raw, RawStr, display, doctype, raw};

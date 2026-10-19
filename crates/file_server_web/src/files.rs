@@ -3,19 +3,21 @@
 use crate::html::Html;
 use authn_identity::prelude::Identity;
 use axum::Form;
+// Unlike axum's `Query`, reads repeated keys (`?item=a&item=b`) into a `Vec`.
 use axum::body::Body;
 use axum::extract::{OriginalUri, Path, Query, State};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
+use axum_extra::extract::Query as MultiQuery;
 use file_server_core::prelude::{EntryKind, EntryName, FilesError, Location, MountName, RelPath};
 use file_server_views::prelude::Href;
-use file_server_views::prelude::{self as views, Done};
+use file_server_views::prelude::{self as views, Done, Moving};
 use htmlb::AttrValue;
 use serde::Deserialize;
 use tokio_util::io::ReaderStream;
 
 use crate::auth::CurrentUser;
-use crate::error::files_error;
+use crate::error::{bad_request, files_error};
 use crate::state::{AppState, Ports};
 
 /// `{mount}` and the optional `{*path}` of a location route.
@@ -36,14 +38,14 @@ impl At {
 }
 
 /// Anonymous visitors see the sign-in page, which comes back here afterwards.
-fn sign_in<P>(state: &AppState<P>, uri: &OriginalUri) -> Response {
+fn sign_in(uri: &OriginalUri) -> Response {
     let next = uri.path_and_query().map_or("/", |p| p.as_str());
     let status = if next == "/" {
         StatusCode::OK
     } else {
         StatusCode::UNAUTHORIZED
     };
-    (status, Html(views::signed_out(state.page(None), next))).into_response()
+    (status, Html(views::signed_out(next))).into_response()
 }
 
 fn listing_url(dir: &Location, done: Option<Done>) -> String {
@@ -64,17 +66,19 @@ pub async fn home<P: Ports>(
     uri: OriginalUri,
 ) -> Response {
     let Some(user) = user else {
-        return sign_in(&state, &uri);
+        return sign_in(&uri);
     };
     match state.ports.files().mounts(&user).await {
-        Ok(mounts) => Html(views::home(state.page(Some(&user)), &mounts)).into_response(),
-        Err(e) => files_error(&state, Some(&user), e),
+        Ok(mounts) => Html(views::home(state.sign_out(&user), &mounts)).into_response(),
+        Err(e) => files_error(e),
     }
 }
 
 #[derive(Deserialize)]
 pub struct BrowseQuery {
     done: Option<String>,
+    /// Present (`?select`) for the listing in selection mode.
+    select: Option<String>,
 }
 
 /// `GET /m/{mount}/{*path}`: a directory's listing, or a file's download.
@@ -87,7 +91,7 @@ pub async fn browse<P: Ports>(
     Query(query): Query<BrowseQuery>,
 ) -> Response {
     let Some(user) = user else {
-        return sign_in(&state, &uri);
+        return sign_in(&uri);
     };
     let result = async {
         let at = at.location()?;
@@ -95,9 +99,12 @@ pub async fn browse<P: Ports>(
         match files.metadata(&user, &at).await?.kind {
             EntryKind::Directory => {
                 let dir = files.list(&user, &at).await?;
+                if query.select.is_some() && dir.capabilities.moves {
+                    return Ok(Html(views::select(&at, &dir.entries)).into_response());
+                }
                 let done = query.done.as_deref().and_then(Done::from_query);
                 let page = views::directory(
-                    state.page(Some(&user)),
+                    state.sign_out(&user),
                     &at,
                     &dir.entries,
                     dir.capabilities,
@@ -108,9 +115,7 @@ pub async fn browse<P: Ports>(
             EntryKind::File => download(&state, &user, &at).await,
         }
     };
-    result
-        .await
-        .unwrap_or_else(|e| files_error(&state, Some(&user), e))
+    result.await.unwrap_or_else(files_error)
 }
 
 #[hotpath::measure(future = true)]
@@ -119,7 +124,7 @@ async fn download<P: Ports>(
     user: &Identity,
     at: &Location,
 ) -> Result<Response, FilesError> {
-    let (metadata, file) = state.ports.files().download(&user, at).await?;
+    let (metadata, file) = state.ports.files().download(user, at).await?;
     let name = at.path.name().map_or("download", EntryName::as_str);
     let headers = [
         (
@@ -177,7 +182,7 @@ pub async fn rename_form<P: Ports>(
     Path(at): Path<At>,
 ) -> Response {
     let Some(user) = user else {
-        return sign_in(&state, &uri);
+        return sign_in(&uri);
     };
     let result = async {
         let at = at.location()?;
@@ -191,11 +196,38 @@ pub async fn rename_form<P: Ports>(
         }
         state.ports.files().metadata(&user, &at).await?;
         let current = at.path.name().ok_or(FilesError::Root)?.as_str();
-        Ok(Html(views::rename(state.page(Some(&user)), &at, current, None)).into_response())
+        Ok(Html(views::rename(&at, current, None)).into_response())
     };
-    result
-        .await
-        .unwrap_or_else(|e| files_error(&state, Some(&user), e))
+    result.await.unwrap_or_else(files_error)
+}
+
+/// `GET /actions/{mount}/{*path}`: what the user can do with an entry.
+#[hotpath::measure(future = true)]
+pub async fn actions<P: Ports>(
+    State(state): State<AppState<P>>,
+    CurrentUser(user): CurrentUser,
+    uri: OriginalUri,
+    Path(at): Path<At>,
+) -> Response {
+    let Some(user) = user else {
+        return sign_in(&uri);
+    };
+    let result = async {
+        let at = at.location()?;
+        at.path.name().ok_or(FilesError::Root)?;
+        let files = state.ports.files();
+        let capabilities = files.capabilities(&user, &at.mount).await?;
+        if !(capabilities.rename || capabilities.moves) {
+            return Err(if capabilities.list {
+                FilesError::Forbidden
+            } else {
+                FilesError::NotFound
+            });
+        }
+        let kind = files.metadata(&user, &at).await?.kind;
+        Ok(Html(views::actions(&at, kind, capabilities)).into_response())
+    };
+    result.await.unwrap_or_else(files_error)
 }
 
 #[derive(Deserialize)]
@@ -213,15 +245,15 @@ pub async fn rename<P: Ports>(
     Form(form): Form<RenameForm>,
 ) -> Response {
     let Some(user) = user else {
-        return sign_in(&state, &uri);
+        return sign_in(&uri);
     };
     let at = match at.location() {
         Ok(at) => at,
-        Err(e) => return files_error(&state, Some(&user), e),
+        Err(e) => return files_error(e),
     };
     let submitted = form.name.as_str();
     let invalid = |message: String| {
-        let page = views::rename(state.page(Some(&user)), &at, submitted, Some(&message));
+        let page = views::rename(&at, submitted, Some(&message));
         (StatusCode::UNPROCESSABLE_ENTITY, Html(page)).into_response()
     };
     let name = match EntryName::new(submitted) {
@@ -237,7 +269,7 @@ pub async fn rename<P: Ports>(
         Err(FilesError::AlreadyExists) => {
             invalid("Something with that name is already here.".into())
         }
-        Err(e) => files_error(&state, Some(&user), e),
+        Err(e) => files_error(e),
     }
 }
 
@@ -264,7 +296,7 @@ pub async fn move_form<P: Ports>(
     Query(query): Query<MoveQuery>,
 ) -> Response {
     let Some(user) = user else {
-        return sign_in(&state, &uri);
+        return sign_in(&uri);
     };
     let result = async {
         let item = at.location()?;
@@ -276,28 +308,38 @@ pub async fn move_form<P: Ports>(
             ),
             None => parent,
         };
-        picker(&state, &user, &item, &browsing, None, StatusCode::OK).await
-    };
-    result
+        picker(
+            &state,
+            &user,
+            Moving::One(&item),
+            &browsing,
+            None,
+            StatusCode::OK,
+        )
         .await
-        .unwrap_or_else(|e| files_error(&state, Some(&user), e))
+    };
+    result.await.unwrap_or_else(files_error)
 }
 
 #[hotpath::measure(future = true)]
 async fn picker<P: Ports>(
     state: &AppState<P>,
     user: &Identity,
-    item: &Location,
+    moving: Moving<'_>,
     browsing: &Location,
     error: Option<&str>,
     status: StatusCode,
 ) -> Result<Response, FilesError> {
     let files = state.ports.files();
-    if !files.capabilities(&user, &item.mount).await?.moves {
+    let mount = match moving {
+        Moving::One(item) => &item.mount,
+        Moving::Many { from, .. } => &from.mount,
+    };
+    if !files.capabilities(user, mount).await?.moves {
         return Err(FilesError::Forbidden);
     }
-    let folders = files.list(&user, browsing).await?.entries;
-    let page = views::move_picker(state.page(Some(user)), item, browsing, &folders, error);
+    let folders = files.list(user, browsing).await?.entries;
+    let page = views::move_picker(moving, browsing, &folders, error);
     Ok((status, Html(page)).into_response())
 }
 
@@ -316,7 +358,7 @@ pub async fn move_entry<P: Ports>(
     Form(form): Form<MoveForm>,
 ) -> Response {
     let Some(user) = user else {
-        return sign_in(&state, &uri);
+        return sign_in(&uri);
     };
     let result = async {
         let item = at.location()?;
@@ -333,7 +375,7 @@ pub async fn move_entry<P: Ports>(
                 picker(
                     &state,
                     &user,
-                    &item,
+                    Moving::One(&item),
                     &into,
                     Some(&message),
                     StatusCode::CONFLICT,
@@ -343,9 +385,156 @@ pub async fn move_entry<P: Ports>(
             Err(e) => Err(e),
         }
     };
-    result
+    result.await.unwrap_or_else(files_error)
+}
+
+/// The most entries moved at once. Their names travel in the picker's URLs, which proxies
+/// commonly cap at about 8 KB.
+const MAX_SELECTION: usize = 200;
+
+/// A `/move-many/` query: the entries' names, and the folder the picker is browsing.
+#[derive(Deserialize)]
+pub struct SelectionQuery {
+    #[serde(default)]
+    item: Vec<String>,
+    to: Option<String>,
+}
+
+/// The entries to move: valid names, each once.
+struct Selection {
+    items: Vec<EntryName>,
+    to: Option<String>,
+}
+
+impl Selection {
+    fn new(query: SelectionQuery) -> Result<Selection, Response> {
+        if query.item.len() > MAX_SELECTION {
+            return Err(bad_request(
+                "Too many selected",
+                &format!("Move at most {MAX_SELECTION} items at once."),
+            ));
+        }
+        let mut items = Vec::with_capacity(query.item.len());
+        for name in query.item {
+            let name = EntryName::new(name).map_err(|_| files_error(FilesError::NotFound))?;
+            if !items.contains(&name) {
+                items.push(name);
+            }
+        }
+        if items.is_empty() {
+            return Err(bad_request(
+                "Nothing selected",
+                "Select what to move first.",
+            ));
+        }
+        Ok(Selection {
+            items,
+            to: query.to,
+        })
+    }
+}
+
+/// `GET /move-many/{mount}/{*path}?item=…&to=<folder>`: pick where to move entries of a
+/// directory, starting there.
+#[hotpath::measure(future = true)]
+pub async fn move_many_form<P: Ports>(
+    State(state): State<AppState<P>>,
+    CurrentUser(user): CurrentUser,
+    uri: OriginalUri,
+    Path(at): Path<At>,
+    MultiQuery(query): MultiQuery<SelectionQuery>,
+) -> Response {
+    let Some(user) = user else {
+        return sign_in(&uri);
+    };
+    let selection = match Selection::new(query) {
+        Ok(selection) => selection,
+        Err(response) => return response,
+    };
+    let result = async {
+        let from = at.location()?;
+        let browsing = match &selection.to {
+            Some(to) => Location::new(
+                from.mount.clone(),
+                RelPath::parse(to).map_err(|_| FilesError::NotFound)?,
+            ),
+            None => from.clone(),
+        };
+        let moving = Moving::Many {
+            from: &from,
+            items: &selection.items,
+        };
+        picker(&state, &user, moving, &browsing, None, StatusCode::OK).await
+    };
+    result.await.unwrap_or_else(files_error)
+}
+
+/// `POST /move-many/{mount}/{*path}?item=…`: moves each entry, then shows the destination.
+/// If some can't move, the picker comes back with just those.
+#[hotpath::measure(future = true)]
+pub async fn move_many<P: Ports>(
+    State(state): State<AppState<P>>,
+    CurrentUser(user): CurrentUser,
+    uri: OriginalUri,
+    Path(at): Path<At>,
+    MultiQuery(query): MultiQuery<SelectionQuery>,
+    Form(form): Form<MoveForm>,
+) -> Response {
+    let Some(user) = user else {
+        return sign_in(&uri);
+    };
+    let selection = match Selection::new(query) {
+        Ok(selection) => selection,
+        Err(response) => return response,
+    };
+    let result = async {
+        let from = at.location()?;
+        let into = Location::new(
+            from.mount.clone(),
+            RelPath::parse(&form.to).map_err(|_| FilesError::NotFound)?,
+        );
+        let total = selection.items.len();
+        let mut failed = Vec::new();
+        let mut reason = None;
+        for item in selection.items {
+            let at = from.join(item.clone());
+            match state.ports.files().move_into(&user, &at, &into).await {
+                Ok(_) => {}
+                Err(
+                    e @ (FilesError::AlreadyExists
+                    | FilesError::IntoItself
+                    | FilesError::CrossDevice
+                    | FilesError::NotFound),
+                ) => {
+                    reason.get_or_insert(e);
+                    failed.push(item);
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        let Some(reason) = reason else {
+            return Ok(Redirect::to(&listing_url(&into, Some(Done::Moved))).into_response());
+        };
+        let message = format!(
+            "Moved {} of {total}. The other {}: {reason}.",
+            total - failed.len(),
+            failed.len(),
+        );
+        let moving = Moving::Many {
+            from: &from,
+            items: &failed,
+        };
+        picker(
+            &state,
+            &user,
+            moving,
+            &into,
+            Some(&message),
+            StatusCode::CONFLICT,
+        )
         .await
-        .unwrap_or_else(|e| files_error(&state, Some(&user), e))
+    };
+    result.await.unwrap_or_else(files_error)
 }
 
 #[cfg(test)]

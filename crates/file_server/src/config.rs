@@ -118,10 +118,10 @@ impl Config {
                 mount.path = directory.join(&mount.path);
             }
         }
-        if let Some(basic) = &mut config.auth.r#static {
-            if basic.directory.is_relative() {
-                basic.directory = directory.join(&basic.directory);
-            }
+        if let Some(basic) = &mut config.auth.r#static
+            && basic.directory.is_relative()
+        {
+            basic.directory = directory.join(&basic.directory);
         }
         Ok(config)
     }

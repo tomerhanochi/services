@@ -1,0 +1,10 @@
+[package]
+name = "htmlb-axum"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+htmlb = { path = "../htmlb" }
+futures = { version = "0.3.34"}
+futures-util = { version = "0.3"}

@@ -1,94 +1,210 @@
-//! Material Symbols (Rounded, weight 400), inlined as SVG so pages need no icon font. Each
-//! icon is a zero-sized type that writes its `icon/<name>.svg` file verbatim, so its length
-//! is known exactly at compile time.
+//! Material Symbols (Rounded, weight 400), drawn by Google Fonts' icon font. Each crate
+//! declares the icons it uses with [`icons!`](crate::icons), getting an enum of them and
+//! the URL of a stylesheet whose font holds only those icons.
 //!
-//! Path data from the `@material-symbols/svg-400` npm package (Apache License 2.0). To add
-//! an icon, copy its `<path d>` from that package's `rounded/<name>.svg` into a new file
-//! here, shaped like the others (`class="md-icon"`, `aria-hidden`, no `width`/`height`),
-//! and declare it below.
+//! ```
+//! htmlb_components::icons! {
+//!     pub enum Icons { ArrowBack, Folder }
+//! }
+//!
+//! use htmlb::IntoHtml;
+//! assert_eq!(
+//!     Icons::url(),
+//!     "https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=arrow_back,folder&display=block",
+//! );
+//! assert_eq!(Icons::Folder.to_html(), r#"<span class="md-icon" aria-hidden="true">folder</span>"#);
+//! ```
+//!
+//! Unknown names don't compile:
+//!
+//! ```compile_fail
+//! htmlb_components::icons! {
+//!     pub enum Icons { NoSuchIcon }
+//! }
+//! let _ = Icons::url();
+//! ```
+
+mod names;
 
 use htmlb::IntoHtml;
 
 /// An icon. Rendered `aria-hidden`: pair it with a text label or `aria-label`.
 pub trait Icon: IntoHtml + Copy {
-    /// The complete `<svg>` element.
-    const SVG: &'static str;
+    /// The ligature the font draws as this icon, e.g. `arrow_back`.
+    fn name(self) -> &'static str;
 }
 
-/// `icon!(Name, "file.svg")` declares `pub struct Name`, rendering `icon/file.svg`.
-macro_rules! icon {
-    ($name:ident, $file:literal) => {
-        #[doc = concat!("`", $file, "`")]
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-        pub struct $name;
-
-        impl Icon for $name {
-            const SVG: &'static str = include_str!(concat!("icon/", $file)).trim_ascii_end();
+/// Declares `enum Name { Variant, ... }` of Material Symbols, named in `PascalCase`
+/// (`ArrowBack` is `arrow_back`). The enum is an [`Icon`], and `Name::url()` is the
+/// stylesheet to link to on pages that use it.
+#[macro_export]
+macro_rules! icons {
+    ($(#[$meta:meta])* $vis:vis enum $enum:ident { $($name:ident),+ $(,)? }) => {
+        $(#[$meta])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        $vis enum $enum {
+            $($name,)+
         }
 
-        impl IntoHtml for $name {
-            const MIN_LEN: usize = <Self as Icon>::SVG.len();
+        impl $enum {
+            /// The Google Fonts stylesheet whose font draws exactly these icons.
+            pub const fn url() -> &'static str {
+                const NAMES: &[&str] = &[$($crate::icon::__private::lookup(stringify!($name)),)+];
+                const COUNT: usize = NAMES.len();
+                const SORTED: [&str; COUNT] = $crate::icon::__private::sorted::<COUNT>(NAMES);
+                const LEN: usize = $crate::icon::__private::url_len(&SORTED);
+                const BYTES: [u8; LEN] = $crate::icon::__private::url::<LEN>(&SORTED);
+                match ::core::str::from_utf8(&BYTES) {
+                    Ok(url) => url,
+                    Err(_) => panic!("icon names are ASCII"),
+                }
+            }
+        }
+
+        impl $crate::icon::Icon for $enum {
+            fn name(self) -> &'static str {
+                match self {
+                    $(Self::$name => const { $crate::icon::__private::lookup(stringify!($name)) },)+
+                }
+            }
+        }
+
+        impl $crate::icon::__private::IntoHtml for $enum {
+            const MIN_LEN: usize = $crate::icon::__private::MARKUP_LEN;
+            #[inline]
+            fn len_hint(&self) -> usize {
+                Self::MIN_LEN + $crate::icon::Icon::name(*self).len()
+            }
             #[inline]
             fn write_html(self, buf: &mut String) {
-                buf.push_str(<Self as Icon>::SVG)
+                $crate::icon::__private::write($crate::icon::Icon::name(self), buf)
             }
         }
     };
 }
 
-icon!(ArrowBack, "arrow_back.svg");
-icon!(ArrowUpward, "arrow_upward.svg");
-icon!(Check, "check.svg");
-icon!(ChevronRight, "chevron_right.svg");
-icon!(Close, "close.svg");
-icon!(Download, "download.svg");
-icon!(Draft, "draft.svg");
-icon!(DriveFileMove, "drive_file_move.svg");
-icon!(Edit, "edit.svg");
-icon!(Error, "error.svg");
-icon!(Folder, "folder.svg");
-icon!(HardDrive, "hard_drive.svg");
-icon!(Home, "home.svg");
-icon!(Lock, "lock.svg");
-icon!(Login, "login.svg");
-icon!(Logout, "logout.svg");
-icon!(MoreVert, "more_vert.svg");
+/// For [`icons!`](crate::icons) only.
+#[doc(hidden)]
+pub mod __private {
+    pub use super::names::lookup;
+    pub use htmlb::IntoHtml;
+
+    const PREFIX: &str = "https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=";
+    // `block` hides each ligature's text until the font arrives, rather than flashing it.
+    const SUFFIX: &str = "&display=block";
+
+    const OPEN: &str = r#"<span class="md-icon" aria-hidden="true">"#;
+    const CLOSE: &str = "</span>";
+    pub const MARKUP_LEN: usize = OPEN.len() + CLOSE.len();
+
+    /// Writes an icon. Names are `[a-z0-9_]`: nothing to escape.
+    #[inline]
+    pub fn write(name: &str, buf: &mut String) {
+        buf.push_str(OPEN);
+        buf.push_str(name);
+        buf.push_str(CLOSE);
+    }
+
+    /// Alphabetical, so the same icons give the same URL (and cache entry) in any order.
+    pub const fn sorted<const N: usize>(names: &[&'static str]) -> [&'static str; N] {
+        let mut out = [""; N];
+        let mut i = 0;
+        while i < N {
+            out[i] = names[i];
+            let mut j = i;
+            while j > 0 && less(out[j], out[j - 1]) {
+                let swap = out[j];
+                out[j] = out[j - 1];
+                out[j - 1] = swap;
+                j -= 1;
+            }
+            i += 1;
+        }
+        out
+    }
+
+    const fn less(a: &str, b: &str) -> bool {
+        let (a, b) = (a.as_bytes(), b.as_bytes());
+        let mut i = 0;
+        while i < a.len() && i < b.len() {
+            if a[i] != b[i] {
+                return a[i] < b[i];
+            }
+            i += 1;
+        }
+        a.len() < b.len()
+    }
+
+    /// The length of [`url`]: the names, comma-separated, between the prefix and suffix.
+    pub const fn url_len(names: &[&str]) -> usize {
+        let mut len = PREFIX.len() + SUFFIX.len() + names.len().saturating_sub(1);
+        let mut i = 0;
+        while i < names.len() {
+            len += names[i].len();
+            i += 1;
+        }
+        len
+    }
+
+    pub const fn url<const LEN: usize>(names: &[&str]) -> [u8; LEN] {
+        let mut out = [0; LEN];
+        let mut pos = copy(PREFIX, &mut out, 0);
+        let mut i = 0;
+        while i < names.len() {
+            if i > 0 {
+                out[pos] = b',';
+                pos += 1;
+            }
+            pos = copy(names[i], &mut out, pos);
+            i += 1;
+        }
+        copy(SUFFIX, &mut out, pos);
+        out
+    }
+
+    const fn copy(s: &str, out: &mut [u8], mut pos: usize) -> usize {
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            out[pos] = bytes[i];
+            pos += 1;
+            i += 1;
+        }
+        pos
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::Icon;
+    use htmlb::IntoHtml;
 
-    const ALL: &[&str] = &[
-        ArrowBack::SVG,
-        ArrowUpward::SVG,
-        Check::SVG,
-        ChevronRight::SVG,
-        Close::SVG,
-        Download::SVG,
-        Draft::SVG,
-        DriveFileMove::SVG,
-        Edit::SVG,
-        Error::SVG,
-        Folder::SVG,
-        HardDrive::SVG,
-        Home::SVG,
-        Lock::SVG,
-        Login::SVG,
-        Logout::SVG,
-        MoreVert::SVG,
-    ];
+    crate::icons! {
+        enum Icons { MoreVert, ArrowBack, Draft }
+    }
 
     #[test]
-    fn every_icon_is_one_hidden_svg_element() {
-        for svg in ALL {
-            assert!(svg.starts_with(r#"<svg class="md-icon" viewBox="0 -960 960 960" aria-hidden="true" focusable="false">"#), "{svg}");
-            assert!(svg.ends_with("</svg>") && !svg.contains('\n'), "{svg}");
-        }
+    fn url_lists_names_alphabetically() {
+        assert!(
+            Icons::url().ends_with("&icon_names=arrow_back,draft,more_vert&display=block"),
+            "{}",
+            Icons::url()
+        );
+    }
+
+    #[test]
+    fn renders_a_hidden_ligature() {
+        assert_eq!(Icons::MoreVert.name(), "more_vert");
+        assert_eq!(
+            Icons::MoreVert.to_html(),
+            r#"<span class="md-icon" aria-hidden="true">more_vert</span>"#
+        );
     }
 
     #[test]
     fn length_is_exact() {
-        assert_eq!(ArrowBack.len_hint(), ArrowBack.to_html().len());
-        assert_eq!(<ArrowBack as IntoHtml>::MIN_LEN, ArrowBack::SVG.len());
+        for icon in [Icons::ArrowBack, Icons::Draft, Icons::MoreVert] {
+            assert_eq!(icon.len_hint(), icon.to_html().len());
+        }
     }
 }

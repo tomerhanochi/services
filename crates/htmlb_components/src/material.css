@@ -265,11 +265,26 @@ body {
   outline-offset: 2px;
 }
 
+/* Material Symbols ligatures. The fixed 1em box keeps the ligature's text from taking
+   space while `display=block` hides it, before the font arrives. */
 .md-icon {
-  width: 24px;
-  height: 24px;
+  display: inline-block;
   flex: none;
-  fill: currentColor;
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+  font-family: "Material Symbols Rounded";
+  font-size: 24px;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Interactive elements: reset native looks, then draw MD3 state layers on `::before`. */
@@ -332,7 +347,7 @@ body {
   inset: -4px 0;
 }
 .md-button__label { overflow: hidden; text-overflow: ellipsis; }
-.md-button .md-icon { width: 18px; height: 18px; margin-inline-start: -8px; }
+.md-button .md-icon { font-size: 18px; margin-inline-start: -8px; }
 .md-button-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
 .md-button-tonal { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .md-button-elevated {
@@ -424,6 +439,17 @@ body {
   min-height: 80px;
   padding: 12px max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   background: var(--md-sys-color-surface-container);
+}
+/* Hidden until something is selected. */
+.md-selection-bar { display: none; }
+body:has(.md-checkbox:checked) .md-selection-bar { display: flex; }
+
+/* The native control, in the scheme's colors; 18px, centered in a 24px icon slot. */
+.md-checkbox {
+  width: 18px;
+  height: 18px;
+  margin: 3px;
+  accent-color: var(--md-sys-color-primary);
 }
 
 /* Scaffold: one column, as wide as a phone; centered on larger screens. */

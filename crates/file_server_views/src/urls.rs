@@ -2,14 +2,29 @@
 
 use std::fmt::Write;
 
-use file_server_core::prelude::{EntryName, Location, RelPath};
+use file_server_core::prelude::{EntryName, Location, MountName, RelPath};
 use htmlb::AttrValue;
 
 pub const HOME: &str = "/";
 pub const LOGIN: &str = "/login";
 pub const LOGOUT: &str = "/logout";
 pub const AUTH_CALLBACK: &str = "/auth/callback";
-pub const ASSETS: &str = "/assets";
+
+/// A file every page links to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Asset {
+    Css,
+    Favicon,
+}
+
+impl Asset {
+    pub const fn url(self) -> &'static str {
+        match self {
+            Asset::Css => "/assets/app.css",
+            Asset::Favicon => "/assets/favicon.svg",
+        }
+    }
+}
 
 /// What a location URL leads to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -20,6 +35,10 @@ pub enum Route {
     Rename,
     /// `/move/{mount}/{path}`
     Move,
+    /// `/actions/{mount}/{path}`: what can be done with an entry.
+    Actions,
+    /// `/move-many/{mount}/{path}?item=…&item=…`: moving entries of a directory.
+    MoveMany,
 }
 
 impl Route {
@@ -28,19 +47,24 @@ impl Route {
             Route::Browse => "/m/",
             Route::Rename => "/rename/",
             Route::Move => "/move/",
+            Route::Actions => "/actions/",
+            Route::MoveMany => "/move-many/",
         }
     }
 }
 
 /// A URL to a location, percent-encoded straight into the output (no `String` per link).
-/// Encoded URLs contain only `A-Z a-z 0-9 - . _ ~ / % ? =`, so they need no HTML escaping.
+/// Encoded URLs contain only `A-Z a-z 0-9 - . _ ~ / % ? = &`, so they need no HTML escaping:
+/// an `&` followed by a name and `=`, not `;`, is never a character reference.
 #[derive(Clone, Copy)]
 pub struct Href<'a> {
     route: Route,
     location: &'a Location,
     child: Option<&'a EntryName>,
     directory: bool,
-    /// `?to=<path>` for the move picker.
+    /// `?item=<name>&…` for moving several entries.
+    items: &'a [EntryName],
+    /// `?to=<path>` for the move picker. Always last.
     to: Option<&'a RelPath>,
 }
 
@@ -51,6 +75,7 @@ impl<'a> Href<'a> {
             location,
             child: None,
             directory: false,
+            items: &[],
             to: None,
         }
     }
@@ -71,6 +96,12 @@ impl<'a> Href<'a> {
 
     pub fn directory(mut self, directory: bool) -> Self {
         self.directory = directory;
+        self
+    }
+
+    /// The entries being moved, by name.
+    pub fn items(mut self, items: &'a [EntryName]) -> Self {
+        self.items = items;
         self
     }
 
@@ -111,6 +142,11 @@ impl AttrValue for Href<'_> {
         self.route.prefix().len()
             + self.location.mount.as_str().len()
             + self.components().map(|c| c.len() + 1).sum::<usize>()
+            + self
+                .items
+                .iter()
+                .map(|i| i.as_str().len() + 6)
+                .sum::<usize>()
             + 1
     }
 
@@ -124,8 +160,16 @@ impl AttrValue for Href<'_> {
         if self.directory {
             out.push('/');
         }
+        let mut separator = '?';
+        for item in self.items {
+            out.push(separator);
+            out.push_str("item=");
+            encode(out, item.as_str());
+            separator = '&';
+        }
         if let Some(to) = self.to {
-            out.push_str("?to=");
+            out.push(separator);
+            out.push_str("to=");
             for (i, component) in to.components().iter().enumerate() {
                 if i > 0 {
                     out.push_str("%2F");
@@ -155,9 +199,89 @@ impl AttrValue for LoginHref<'_> {
     }
 }
 
+/// `/m/{mount}/`, without building a `Location`.
+#[derive(Clone, Copy)]
+pub struct MountHref<'a>(pub &'a MountName);
+
+impl AttrValue for MountHref<'_> {
+    const VALUE_MIN_LEN: usize = 4;
+    fn value_len_hint(&self) -> usize {
+        4 + self.0.as_str().len()
+    }
+    fn write_value(self, out: &mut String) {
+        out.push_str(Route::Browse.prefix());
+        out.push_str(self.0.as_str()); // `[a-z0-9_-]`: nothing to encode.
+        out.push('/');
+    }
+}
+
+/// A directory's listing URL; owns the `Location` it was given.
+pub struct ParentHref(pub Location);
+
+impl ParentHref {
+    /// The listing `at` is in, or `at` itself at a mount's root.
+    pub fn of(at: &Location) -> ParentHref {
+        ParentHref(at.parent().unwrap_or_else(|| at.clone()))
+    }
+}
+
+impl AttrValue for ParentHref {
+    const VALUE_MIN_LEN: usize = 3;
+    fn value_len_hint(&self) -> usize {
+        Href::dir(&self.0).value_len_hint()
+    }
+    fn write_value(self, out: &mut String) {
+        Href::dir(&self.0).write_value(out)
+    }
+}
+
+/// The listing in selection mode: `?select`.
+#[derive(Clone, Copy)]
+pub struct SelectHref<'a>(pub &'a Location);
+
+impl AttrValue for SelectHref<'_> {
+    const VALUE_MIN_LEN: usize = 10;
+    fn value_len_hint(&self) -> usize {
+        Href::dir(self.0).value_len_hint() + 7
+    }
+    fn write_value(self, out: &mut String) {
+        Href::dir(self.0).write_value(out);
+        out.push_str("?select");
+    }
+}
+
+/// The picker browsing `parent`.
+pub struct OwnedPicker<'a>(pub Href<'a>, pub RelPath);
+
+impl AttrValue for OwnedPicker<'_> {
+    const VALUE_MIN_LEN: usize = 3;
+    fn value_len_hint(&self) -> usize {
+        self.0.to(&self.1).value_len_hint()
+    }
+    fn write_value(self, out: &mut String) {
+        self.0.to(&self.1).write_value(out)
+    }
+}
+
+/// The picker browsing a child of the current folder.
+#[derive(Clone, Copy)]
+pub struct PickerChild<'a>(pub Href<'a>, pub &'a EntryName);
+
+impl AttrValue for PickerChild<'_> {
+    const VALUE_MIN_LEN: usize = 3;
+    fn value_len_hint(&self) -> usize {
+        self.0.value_len_hint() + 3 + self.1.as_str().len()
+    }
+    fn write_value(self, out: &mut String) {
+        self.0.write_value(out);
+        // `to` already ends the URL; append `/child` (or the first component).
+        out.push_str(if out.ends_with("to=") { "" } else { "%2F" });
+        encode(out, self.1.as_str());
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use file_server_core::prelude::MountName;
     use htmlb::prelude::*;
 
     use super::*;
@@ -183,6 +307,14 @@ mod tests {
         assert_eq!(
             html,
             r#"<a href="/move/photos/a%20b/%C3%BC%22%3C?to=p%2Fq"></a>"#
+        );
+        let items = [EntryName::new("a b").unwrap(), EntryName::new("c").unwrap()];
+        let html = a()
+            .href(Href::new(Route::MoveMany, &location).items(&items).to(&to))
+            .to_html();
+        assert_eq!(
+            html,
+            r#"<a href="/move-many/photos/a%20b/%C3%BC%22%3C?item=a%20b&item=c&to=p%2Fq"></a>"#
         );
         assert_eq!(
             a().href(Href::dir(&Location::root(MountName::new("m").unwrap())))

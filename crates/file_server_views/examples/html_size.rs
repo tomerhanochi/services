@@ -23,13 +23,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 })
             })
             .collect::<Result<Vec<_>, InvalidName>>()?;
-        let page = Page {
-            stylesheet: "/assets/app.css",
-            user: Some("alice"),
-            logout: false,
-        };
         let html = directory(
-            page,
+            None,
             &location,
             &entries,
             Capabilities {
@@ -41,15 +36,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             None,
         )
         .to_html();
-        let svg_bytes: usize = html
-            .match_indices("<svg")
-            .map(|(start, _)| html[start..].find("</svg>").unwrap() + "</svg>".len())
+        const ICON: &str = r#"<span class="md-icon""#;
+        let icon_bytes: usize = html
+            .match_indices(ICON)
+            .map(|(start, _)| html[start..].find("</span>").unwrap() + "</span>".len())
             .sum();
         println!(
-            "{role}: {} HTML bytes, {} SVG elements, {svg_bytes} SVG bytes ({:.1}%)",
+            "{role}: {} HTML bytes, {} icons, {icon_bytes} icon bytes ({:.1}%)",
             html.len(),
-            html.matches("<svg").count(),
-            100.0 * svg_bytes as f64 / html.len() as f64
+            html.matches(ICON).count(),
+            100.0 * icon_bytes as f64 / html.len() as f64
         );
         fs::write(output.join(format!("{role}.html")), html)?;
     }

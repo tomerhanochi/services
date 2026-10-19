@@ -2,7 +2,6 @@ use authn::prelude::Authenticate;
 use authn_identity::prelude::Identity;
 use axum::http::request::Parts;
 use file_server_core::prelude::{AccessStore, FileService, FileStore};
-use file_server_views::prelude::Page;
 use std::{fmt::Display, sync::Arc};
 
 pub trait Ports: Send + Sync + 'static {
@@ -32,14 +31,11 @@ impl<P> Clone for AppState<P> {
     }
 }
 impl<P> AppState<P> {
-    pub(crate) fn page<'a>(&self, user: Option<&'a Identity>) -> Page<'a> {
-        Page {
-            stylesheet: "/assets/app.css",
-            logout: self.oidc_enabled,
-            user: user.map(|identity| match identity {
-                Identity::User(user) => user.id.as_str(),
-                Identity::Machine(machine) => machine.id.as_str(),
-            }),
-        }
+    /// The user's name, for pages' sign-out button, when they can sign out.
+    pub(crate) fn sign_out<'a>(&self, user: &'a Identity) -> Option<&'a str> {
+        self.oidc_enabled.then(|| match user {
+            Identity::User(user) => user.id.as_str(),
+            Identity::Machine(machine) => machine.id.as_str(),
+        })
     }
 }

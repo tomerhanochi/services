@@ -30,6 +30,9 @@ pub struct Submit<F = &'static str> {
     pub form: Option<F>,
 }
 
+/// A `<label>`: activating it toggles the [`checkbox`](crate::checkbox) inside it.
+pub struct Label;
+
 /// Shows the popover with this id (a [`sheet`](crate::sheet)).
 pub struct ShowPopover<I>(pub I);
 
@@ -44,6 +47,17 @@ impl Action for Inert {
         children: C,
     ) -> impl IntoHtml {
         div().class(class).child(children)
+    }
+}
+
+impl Action for Label {
+    fn element<K: ClassList, L: AttrValue + Clone, C: IntoHtml>(
+        self,
+        class: K,
+        _: Option<L>,
+        children: C,
+    ) -> impl IntoHtml {
+        label().class(class).child(children)
     }
 }
 
@@ -163,6 +177,11 @@ pub trait Actionable: Sized {
     /// Make it a link that downloads `href`.
     fn download<H: AttrValue>(self, href: H) -> Self::With<Download<H>> {
         self.action(Download(href))
+    }
+
+    /// Toggles the checkbox inside it.
+    fn label(self) -> Self::With<Label> {
+        self.action(Label)
     }
 
     /// Make it submit the form it's in.

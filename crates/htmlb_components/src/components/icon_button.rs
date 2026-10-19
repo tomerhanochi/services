@@ -39,7 +39,7 @@ impl<I: Icon, L: AttrValue + Clone, A: Action> Component for IconButton<I, L, A>
             .element(ICON_BUTTON, Some(self.label), self.icon)
     }
     fn dynamic_len_hint(&self) -> usize {
-        // `aria-label` and `title`. The icon is in `MIN_LEN`.
-        2 * self.label.value_len_hint()
+        // `aria-label` and `title`, and the icon's name.
+        2 * self.label.value_len_hint() + self.icon.len_hint() - I::MIN_LEN
     }
 }

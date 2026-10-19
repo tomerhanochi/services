@@ -3,6 +3,7 @@
 
 mod bottom_app_bar;
 mod button;
+mod checkbox;
 mod divider;
 mod document;
 mod icon_button;
@@ -20,6 +21,7 @@ mod top_app_bar;
 
 pub use bottom_app_bar::*;
 pub use button::*;
+pub use checkbox::*;
 pub use divider::*;
 pub use document::*;
 pub use icon_button::*;

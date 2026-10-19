@@ -38,7 +38,7 @@ pub(crate) async fn security_headers(request: Request, next: Next) -> Response {
         HeaderValue::from_static("nosniff"),
     );
     headers.insert("referrer-policy", HeaderValue::from_static("no-referrer"));
-    headers.insert("content-security-policy", HeaderValue::from_static("default-src 'self'; script-src 'none'; style-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"));
+    headers.insert("content-security-policy", HeaderValue::from_static("default-src 'self'; script-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"));
     headers
         .entry(header::CACHE_CONTROL)
         .or_insert(HeaderValue::from_static("private, no-store"));

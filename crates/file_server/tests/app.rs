@@ -51,6 +51,9 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
     fs::write(directory.path().join("documents/a.txt"), "hello world").unwrap();
     fs::write(directory.path().join("documents/existing.txt"), "keep me").unwrap();
     fs::write(directory.path().join("documents/<unsafe>.txt"), "escaped").unwrap();
+    for name in ["c.txt", "d.txt", "e.txt", "folder/d.txt"] {
+        fs::write(directory.path().join("documents").join(name), name).unwrap();
+    }
     let url = std::env::var("TEST_DATABASE_URL").unwrap();
     let contents = include_str!("../file_server.example.toml").replace(
         "postgres://file_server:development-only@localhost:15432/file_server",
@@ -111,6 +114,21 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .unwrap();
     assert_eq!(file.status(), StatusCode::OK);
     assert_eq!(text(file).await, "hello world");
+    let no_actions = app
+        .clone()
+        .oneshot(request("GET", "/actions/documents/a.txt", Some(bob), ""))
+        .await
+        .unwrap();
+    assert_eq!(no_actions.status(), StatusCode::FORBIDDEN);
+    let actions = app
+        .clone()
+        .oneshot(request("GET", "/actions/documents/a.txt", Some(alice), ""))
+        .await
+        .unwrap();
+    assert_eq!(actions.status(), StatusCode::OK);
+    let body = text(actions).await;
+    assert!(body.contains(r#"href="/rename/documents/a.txt""#));
+    assert!(body.contains(r#"href="/move/documents/a.txt""#));
     let forbidden = app
         .clone()
         .oneshot(request(
@@ -163,6 +181,94 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         fs::read_to_string(directory.path().join("documents/folder/b.txt")).unwrap(),
         "hello world"
     );
+    let selecting = app
+        .clone()
+        .oneshot(request("GET", "/m/documents/?select", Some(alice), ""))
+        .await
+        .unwrap();
+    assert_eq!(selecting.status(), StatusCode::OK);
+    let body = text(selecting).await;
+    assert!(body.contains(r#"name="item" value="c.txt" form="selection""#));
+    assert!(body.contains(r#"action="/move-many/documents""#));
+    let viewer_selecting = app
+        .clone()
+        .oneshot(request("GET", "/m/documents/?select", Some(bob), ""))
+        .await
+        .unwrap();
+    assert!(!text(viewer_selecting).await.contains("md-checkbox"));
+    let viewer_moves = app
+        .clone()
+        .oneshot(request(
+            "POST",
+            "/move-many/documents?item=c.txt",
+            Some(bob),
+            "to=folder",
+        ))
+        .await
+        .unwrap();
+    assert_eq!(viewer_moves.status(), StatusCode::FORBIDDEN);
+    let moved_many = app
+        .clone()
+        .oneshot(request(
+            "POST",
+            "/move-many/documents?item=c.txt&item=%3Cunsafe%3E.txt",
+            Some(alice),
+            "to=folder",
+        ))
+        .await
+        .unwrap();
+    assert_eq!(moved_many.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        moved_many.headers()[header::LOCATION],
+        "/m/documents/folder/?done=moved"
+    );
+    for name in ["c.txt", "<unsafe>.txt"] {
+        assert!(
+            directory
+                .path()
+                .join("documents/folder")
+                .join(name)
+                .exists()
+        );
+    }
+    let partly_moved = app
+        .clone()
+        .oneshot(request(
+            "POST",
+            "/move-many/documents?item=d.txt&item=e.txt",
+            Some(alice),
+            "to=folder",
+        ))
+        .await
+        .unwrap();
+    assert_eq!(partly_moved.status(), StatusCode::CONFLICT);
+    let body = text(partly_moved).await;
+    assert!(body.contains("Moved 1 of 2. The other 1:"), "{body}");
+    // The picker comes back with only what didn't move.
+    assert!(
+        body.contains(r#"action="/move-many/documents?item=d.txt""#),
+        "{body}"
+    );
+    assert!(directory.path().join("documents/folder/e.txt").exists());
+    assert_eq!(
+        fs::read_to_string(directory.path().join("documents/d.txt")).unwrap(),
+        "d.txt"
+    );
+    let too_many = (0..201)
+        .map(|i| format!("item={i}"))
+        .collect::<Vec<_>>()
+        .join("&");
+    let too_many = app
+        .clone()
+        .oneshot(request(
+            "GET",
+            &format!("/move-many/documents?{too_many}"),
+            Some(alice),
+            "",
+        ))
+        .await
+        .unwrap();
+    assert_eq!(too_many.status(), StatusCode::BAD_REQUEST);
     let traversal = app
         .clone()
         .oneshot(request(

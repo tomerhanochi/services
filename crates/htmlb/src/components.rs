@@ -14,9 +14,17 @@ pub fn color_scheme() -> impl IntoHtml {
     meta().name("color-scheme").content("light dark")
 }
 
-/// A stylesheet link.
-pub fn stylesheet(href: String) -> impl IntoHtml {
-    link().rel("stylesheet").href(href)
+/// `<link rel="…">`, before its `href`.
+type Link = crate::El<crate::tag::link, ((), crate::Attr<crate::attr::rel, &'static str>), ()>;
+
+/// A stylesheet link: give it an `href`.
+pub fn stylesheet() -> Link {
+    link().rel("stylesheet")
+}
+
+/// A favicon link: give it an `href`.
+pub fn favicon() -> Link {
+    link().rel("icon")
 }
 
 /// An external script with a Subresource Integrity SHA tag.

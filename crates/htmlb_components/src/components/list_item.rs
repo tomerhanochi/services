@@ -34,7 +34,7 @@ pub struct ListItem<H, L, S, T, X, A> {
 }
 
 impl<H, L, S, T, X, A> ListItem<H, L, S, T, X, A> {
-    /// Before the text: usually an icon, e.g. [`icon::Folder`](crate::icon::Folder).
+    /// Before the text: usually an [`Icon`](crate::icon::Icon).
     pub fn leading<L2: IntoHtml>(self, leading: L2) -> ListItem<H, L2, S, T, X, A> {
         let ListItem {
             headline,

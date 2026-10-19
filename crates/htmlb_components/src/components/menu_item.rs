@@ -42,6 +42,6 @@ impl<I: Icon, L: IntoHtml, A: Action> Component for MenuItem<I, L, A> {
         )
     }
     fn dynamic_len_hint(&self) -> usize {
-        self.label.len_hint()
+        self.label.len_hint() + self.icon.len_hint() - I::MIN_LEN
     }
 }
