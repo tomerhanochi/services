@@ -22,36 +22,8 @@ data:
     cookie_name = {{ .Values.fileServer.oidc.cookieName | quote }}
     success_path = {{ .Values.fileServer.oidc.successPath | quote }}
 
-    {{- if .Values.fileServer.oidc.users }}
-    [auth.oidc.users]
-    {{- range $subject, $user := .Values.fileServer.oidc.users }}
-    {{ $subject | quote }} = {{ $user | quote }}
-    {{- end }}
-    {{- end }}
-
     {{- range .Values.fileServer.mounts }}
     [[mounts]]
     name = {{ .name | quote }}
     path = {{ printf "/data/%s" .name | quote }}
-    {{- end }}
-
-    {{- range $role, $grants := .Values.fileServer.roles }}
-    [roles.{{ $role | quote }}]
-    {{- range $mount, $grant := $grants }}
-    {{ $mount | quote }} = {{ $grant | quote }}
-    {{- end }}
-    {{- end }}
-
-    {{- if .Values.fileServer.users }}
-    [users]
-    {{- range $user, $roles := .Values.fileServer.users }}
-    {{ $user | quote }} = {{ $roles | toJson }}
-    {{- end }}
-    {{- end }}
-
-    {{- if .Values.fileServer.machines }}
-    [machines]
-    {{- range $machine, $roles := .Values.fileServer.machines }}
-    {{ $machine | quote }} = {{ $roles | toJson }}
-    {{- end }}
     {{- end }}

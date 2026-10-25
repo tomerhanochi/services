@@ -32,9 +32,9 @@ Set `fileServer.publicUrl`, `fileServer.oidc.issuer`, and
 `fileServer.oidc.clientId` for the deployment. The chart derives the OAuth
 redirect URI from `publicUrl` by appending `/auth/callback`, which is the
 file-server's fixed callback route. Register that resulting URI with the OAuth
-provider. `fileServer.oidc.users` maps provider subjects to local file-server
-user IDs; `fileServer.roles`, `fileServer.users`, and `fileServer.machines`
-assign those principals access to mounts.
+provider. The chart does not currently configure local users, roles, or an
+OIDC subject-to-user mapping. OIDC access will need the planned role-claims
+support.
 
 Configure each mount with a file-server `name` and an existing
 `persistentVolumeClaimName`. The chart mounts that claim at `/data/<name>` and
@@ -55,17 +55,9 @@ fileServer:
     secretKeyRef:
       name: file-server-oauth
       key: client-secret
-    users:
-      "provider-subject": alice
   mounts:
     - name: documents
       persistentVolumeClaimName: documents-pvc
-  roles:
-    editors:
-      documents: editor
-  users:
-    alice:
-      - editors
 ```
 
 An optional Gateway API route can be enabled with values like:
