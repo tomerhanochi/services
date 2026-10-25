@@ -13,12 +13,9 @@ default:
 fmt:
     cargo fmt --all
 
-# Check formatting for all Rust source files.
-fmt-check:
-    cargo fmt --all --check
-
 # Format and type-check the workspace.
 check:
+    cargo fmt --all --check
     cargo check --workspace --all-targets
 
 # No database required; database integration tests are explicitly ignored.

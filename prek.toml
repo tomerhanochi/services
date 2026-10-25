@@ -40,14 +40,6 @@ hooks = [
     pass_filenames = false
   },
   {
-    id = "crates-fmt-check",
-    name = "just fmt-check",
-    entry = "just fmt-check",
-    language = "system",
-    files = '(^|/)([^/]+\.rs|Cargo\.toml|Cargo\.lock)$',
-    pass_filenames = false
-  },
-  {
     id = "crates-check",
     name = "just check",
     entry = "just check",
