@@ -37,8 +37,9 @@ OIDC subject-to-user mapping. OIDC access will need the planned role-claims
 support.
 
 Configure each mount with a file-server `name` and an existing
-`persistentVolumeClaimName`. The chart mounts that claim at `/data/<name>` and
-sets the corresponding file-server mount path automatically.
+`persistentVolumeClaimName`. The chart mounts that claim under
+`/var/mnt/<name>` and sets the corresponding file-server mount path
+automatically.
 
 Example values:
 

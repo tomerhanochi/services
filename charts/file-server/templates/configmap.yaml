@@ -25,5 +25,5 @@ data:
     {{- range .Values.fileServer.mounts }}
     [[mounts]]
     name = {{ .name | quote }}
-    path = {{ printf "/data/%s" .name | quote }}
+    path = {{ include "file-server.mountPath" .name | quote }}
     {{- end }}

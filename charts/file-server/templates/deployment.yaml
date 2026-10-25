@@ -87,7 +87,7 @@ spec:
               readOnly: true
             {{- range $index, $mount := .Values.fileServer.mounts }}
             - name: mount-{{ $index }}
-              mountPath: /data/{{ $mount.name }}
+              mountPath: {{ include "file-server.mountPath" $mount.name }}
             {{- end }}
       volumes:
         - name: config
