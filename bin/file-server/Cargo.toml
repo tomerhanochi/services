@@ -8,14 +8,14 @@ description = "Self-hosted file browser with PostgreSQL-backed access and config
 [dependencies]
 hotpath = { workspace = true }
 error-stack = { workspace = true }
-file-server-authn = { path = "../file-server-authn" }
-file-server-core = { path = "../file-server-core" }
-file-server-fs = { path = "../file-server-fs" }
-file-server-postgres = { path = "../file-server-postgres" }
-file-server-web = { path = "../file-server-web" }
-htmlb-components = { path = "../htmlb-components" }
-htmlb-components-theme = { path = "../htmlb-components-theme" }
-authn-identity = { path = "../authn-identity" }
+file-server-authn = { path = "../../lib/file-server-authn" }
+file-server-core = { path = "../../lib/file-server-core" }
+file-server-fs = { path = "../../lib/file-server-fs" }
+file-server-postgres = { path = "../../lib/file-server-postgres" }
+file-server-web = { path = "../../lib/file-server-web" }
+htmlb-components = { path = "../../lib/htmlb-components" }
+htmlb-components-theme = { path = "../../lib/htmlb-components-theme" }
+authn-identity = { path = "../../lib/authn-identity" }
 axum = { workspace = true }
 figment = { version = "0.10", features = ["toml", "env"] }
 serde = { workspace = true }
@@ -28,7 +28,7 @@ url = "2"
 [dev-dependencies]
 tempfile = "3"
 sqlx = { workspace = true }
-authn-token = { path = "../authn-token" }
+authn-token = { path = "../../lib/authn-token" }
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 serde_json = "1"

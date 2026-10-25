@@ -41,7 +41,7 @@ profile-alloc config="file_server.example.toml":
 
 # The local Docker scraper uses the matching development-only bearer token.
 profile-grafana config="file_server.example.toml":
-    HOTPATH_PROMETHEUS_HOST=0.0.0.0 HOTPATH_PROMETHEUS_AUTH_TOKEN=file-server-local-profiling just crates file-server profile {{ quote(config) }}
+    HOTPATH_PROMETHEUS_HOST=0.0.0.0 HOTPATH_PROMETHEUS_AUTH_TOKEN=file-server-local-profiling just bin file-server profile {{ quote(config) }}
 
 # Grafana :3001 (admin / local-profiling), Prometheus :9090, both localhost-only.
 profiling-up:
@@ -61,7 +61,7 @@ test-profile:
 
 # Use the Docker integration workflow with profiling and assert live telemetry.
 test-profile-postgres port="15434":
-    SMOKE_HOTPATH=1 just crates file-server test-postgres {{ quote(port) }}
+    SMOKE_HOTPATH=1 just bin file-server test-postgres {{ quote(port) }}
 
 # Start the example PostgreSQL database.
 postgres-up port="15432":
@@ -88,7 +88,7 @@ test-postgres port="15433":
         cargo build -p file-server --bins --examples --features hotpath-prometheus,hotpath-alloc
     else
         just test-all
-        just crates file-server build
+        just bin file-server build
     fi
     python3 smoke.py
 
