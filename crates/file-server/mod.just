@@ -15,13 +15,13 @@ run config="file_server.example.toml":
     cargo run -p file-server -- {{ quote(config) }}
 
 # Start the local HTTPS stack and run the server with its development config.
-dev:
-    docker compose --file compose.dev.yaml up --detach --wait
+dev: (dev-up)
     cargo run -p file-server -- config.dev.toml
 
 # Start the local HTTPS development dependencies.
 dev-up:
-    docker compose --file compose.dev.yaml up --detach --wait
+    docker compose --file compose.dev.yaml up --detach --wait postgres hydra consent https
+    docker compose --file compose.dev.yaml run --rm hydra-client
 
 # Stop the local HTTPS development dependencies.
 dev-down:
