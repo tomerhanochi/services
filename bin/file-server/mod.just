@@ -1,5 +1,4 @@
 # Load profiling and measurement commands.
-mod profiling
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 # Build the file-server binary and examples.
