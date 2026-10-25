@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use crate::{escape, num};
+use crate::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint, escape, num};
 
 /// An attribute name, as a type. `PREFIX` (` name="`) and `BARE` (` name`) are
 /// concatenated at compile time, so writing one is a single `push_str`.
@@ -14,11 +14,12 @@ pub trait AttrKey {
 
 /// An element's attribute list: `()`, one attribute, or a pair `(earlier, newest)`.
 pub trait Attribute {
-    /// Bytes always written, from the type alone.
+    /// Bytes guaranteed by the attribute types.
     const ATTRS_MIN_LEN: usize;
     /// True for `()`: lets `<div>` be written as one string instead of `<div` + `>`.
     const EMPTY: bool = false;
-    fn attrs_len_hint(&self) -> usize;
+    /// Runtime addition beyond `ATTRS_MIN_LEN`.
+    fn attrs_size_hint(&self) -> usize;
     fn write_attrs(self, buf: &mut String);
 }
 
@@ -26,7 +27,7 @@ impl Attribute for () {
     const ATTRS_MIN_LEN: usize = 0;
     const EMPTY: bool = true;
     #[inline]
-    fn attrs_len_hint(&self) -> usize {
+    fn attrs_size_hint(&self) -> usize {
         0
     }
     #[inline]
@@ -37,8 +38,8 @@ impl<A: Attribute, B: Attribute> Attribute for (A, B) {
     const ATTRS_MIN_LEN: usize = A::ATTRS_MIN_LEN + B::ATTRS_MIN_LEN;
     const EMPTY: bool = A::EMPTY && B::EMPTY;
     #[inline]
-    fn attrs_len_hint(&self) -> usize {
-        self.0.attrs_len_hint() + self.1.attrs_len_hint()
+    fn attrs_size_hint(&self) -> usize {
+        self.0.attrs_size_hint() + self.1.attrs_size_hint()
     }
     #[inline]
     fn write_attrs(self, buf: &mut String) {
@@ -48,15 +49,13 @@ impl<A: Attribute, B: Attribute> Attribute for (A, B) {
 }
 
 /// An attribute value. Written inside double quotes, escaped.
-pub trait AttrValue {
-    const VALUE_MIN_LEN: usize;
+pub trait AttrValue: CompileTimeHtmlSizeHint + RunTimeHtmlSizeHint {
     /// False for `Option`: the whole attribute may be omitted.
     const ALWAYS_PRESENT: bool = true;
     #[inline]
     fn is_present(&self) -> bool {
         true
     }
-    fn value_len_hint(&self) -> usize;
     fn write_value(self, buf: &mut String);
 }
 
@@ -84,14 +83,15 @@ impl<K, V> Attr<K, V> {
 
 impl<K: AttrKey, V: AttrValue> Attribute for Attr<K, V> {
     const ATTRS_MIN_LEN: usize = if V::ALWAYS_PRESENT {
-        K::PREFIX.len() + 1 + V::VALUE_MIN_LEN
+        K::PREFIX.len() + 1 + V::SIZE_HINT
     } else {
         0
     };
     #[inline]
-    fn attrs_len_hint(&self) -> usize {
+    fn attrs_size_hint(&self) -> usize {
         if self.value.is_present() {
-            K::PREFIX.len() + 1 + self.value.value_len_hint()
+            (K::PREFIX.len() + 1 + V::SIZE_HINT + self.value.size_hint())
+                .saturating_sub(Self::ATTRS_MIN_LEN)
         } else {
             0
         }
@@ -125,7 +125,7 @@ impl<K> BoolAttr<K> {
 impl<K: AttrKey> Attribute for BoolAttr<K> {
     const ATTRS_MIN_LEN: usize = 0;
     #[inline]
-    fn attrs_len_hint(&self) -> usize {
+    fn attrs_size_hint(&self) -> usize {
         if self.on { K::BARE.len() } else { 0 }
     }
     #[inline]
@@ -153,14 +153,15 @@ impl<V> DynAttr<V> {
 impl<V: AttrValue> Attribute for DynAttr<V> {
     // ` ` + `="` + `"`, plus the name at runtime.
     const ATTRS_MIN_LEN: usize = if V::ALWAYS_PRESENT {
-        4 + V::VALUE_MIN_LEN
+        4 + V::SIZE_HINT
     } else {
         0
     };
     #[inline]
-    fn attrs_len_hint(&self) -> usize {
+    fn attrs_size_hint(&self) -> usize {
         if self.value.is_present() {
-            4 + self.name.len() + self.value.value_len_hint()
+            (4 + self.name.len() + V::SIZE_HINT + self.value.size_hint())
+                .saturating_sub(Self::ATTRS_MIN_LEN)
         } else {
             0
         }
@@ -180,13 +181,6 @@ impl<V: AttrValue> Attribute for DynAttr<V> {
 macro_rules! string_values {
     ($([$($gen:tt)*] $ty:ty => |$s:ident| $as_str:expr;)*) => {$(
         impl<$($gen)*> AttrValue for $ty {
-            const VALUE_MIN_LEN: usize = 0;
-            #[inline]
-            fn value_len_hint(&self) -> usize {
-                let $s = self;
-                let s: &str = $as_str;
-                s.len()
-            }
             #[inline]
             fn write_value(self, buf: &mut String) {
                 let $s = &self;
@@ -207,11 +201,6 @@ string_values! {
 macro_rules! int_values {
     ($($ty:ty)* => $wide:ty, $digits:path, $write:path) => {$(
         impl AttrValue for $ty {
-            const VALUE_MIN_LEN: usize = 1;
-            #[inline]
-            fn value_len_hint(&self) -> usize {
-                $digits(*self as $wide)
-            }
             #[inline]
             fn write_value(self, buf: &mut String) {
                 $write(buf, self as $wide)
@@ -226,11 +215,6 @@ int_values!(i8 i16 i32 i64 isize => i64, num::digits_signed, num::write_i64);
 macro_rules! display_values {
     ($($ty:ty)*) => {$(
         impl AttrValue for $ty {
-            const VALUE_MIN_LEN: usize = 1;
-            #[inline]
-            fn value_len_hint(&self) -> usize {
-                1
-            }
             #[inline]
             fn write_value(self, buf: &mut String) {
                 num::write_display(buf, self)
@@ -244,23 +228,21 @@ display_values!(u128 i128 f32 f64);
 /// `"true"` / `"false"`, for enumerated attributes like `draggable` and `aria-*`.
 /// (Boolean attributes such as `disabled` take a plain `bool` and use [`BoolAttr`].)
 impl AttrValue for bool {
-    const VALUE_MIN_LEN: usize = 4;
-    #[inline]
-    fn value_len_hint(&self) -> usize {
-        if *self { 4 } else { 5 }
-    }
     #[inline]
     fn write_value(self, buf: &mut String) {
         buf.push_str(if self { "true" } else { "false" })
     }
 }
+impl CompileTimeHtmlSizeHint for bool {
+    const SIZE_HINT: usize = 4;
+}
+impl RunTimeHtmlSizeHint for bool {
+    fn size_hint(&self) -> usize {
+        if *self { 4 } else { 5 }
+    }
+}
 
 impl AttrValue for char {
-    const VALUE_MIN_LEN: usize = 1;
-    #[inline]
-    fn value_len_hint(&self) -> usize {
-        self.len_utf8()
-    }
     #[inline]
     fn write_value(self, buf: &mut String) {
         escape::write(buf, self.encode_utf8(&mut [0; 4]))
@@ -269,15 +251,10 @@ impl AttrValue for char {
 
 /// `None` omits the whole attribute.
 impl<V: AttrValue> AttrValue for Option<V> {
-    const VALUE_MIN_LEN: usize = 0;
     const ALWAYS_PRESENT: bool = false;
     #[inline]
     fn is_present(&self) -> bool {
         self.is_some()
-    }
-    #[inline]
-    fn value_len_hint(&self) -> usize {
-        self.as_ref().map_or(0, V::value_len_hint)
     }
     #[inline]
     fn write_value(self, buf: &mut String) {
@@ -293,17 +270,11 @@ macro_rules! tuple_values {
     ($($t:ident)+) => {
         #[allow(non_snake_case)]
         impl<$($t: AttrValue),+> AttrValue for ($($t,)+) {
-            const VALUE_MIN_LEN: usize = 0 $(+ $t::VALUE_MIN_LEN)+;
             const ALWAYS_PRESENT: bool = false $(|| $t::ALWAYS_PRESENT)+;
             #[inline]
             fn is_present(&self) -> bool {
                 let ($($t,)+) = self;
                 false $(|| $t.is_present())+
-            }
-            #[inline]
-            fn value_len_hint(&self) -> usize {
-                let ($($t,)+) = self;
-                0 $(+ $t.value_len_hint())+
             }
             #[inline]
             fn write_value(self, buf: &mut String) {
@@ -352,15 +323,17 @@ macro_rules! attr_enums {
         }
 
         impl AttrValue for $name {
-            const VALUE_MIN_LEN: usize = min_len(&[$($s),+]);
-            #[inline]
-            fn value_len_hint(&self) -> usize {
-                self.as_str().len()
-            }
             #[inline]
             fn write_value(self, buf: &mut String) {
                 buf.push_str(self.as_str())
             }
+        }
+        impl CompileTimeHtmlSizeHint for $name {
+            const SIZE_HINT: usize = min_len(&[$($s),+]);
+        }
+        impl RunTimeHtmlSizeHint for $name {
+            #[inline]
+            fn size_hint(&self) -> usize { self.as_str().len() - Self::SIZE_HINT }
         }
     )*};
 }

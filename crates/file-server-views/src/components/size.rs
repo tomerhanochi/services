@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use htmlb::{Component, IntoHtml};
+use htmlb::{Component, IntoHtml, RunTimeHtmlSizeHint};
 
 /// `512 B`, `1.5 KB`, `12 MB`, ... (powers of 1000, as file managers on phones show them).
 #[derive(Clone, Copy)]
@@ -69,7 +69,9 @@ impl Component for Size {
     fn render(self) -> impl IntoHtml {
         htmlb::display(self)
     }
-    fn dynamic_len_hint(&self) -> usize {
+}
+impl RunTimeHtmlSizeHint for Size {
+    fn size_hint(&self) -> usize {
         // Exact.
         match self.shown() {
             Shown::Tenths(_, unit) => "1.5 ".len() + unit.len(),
@@ -81,6 +83,7 @@ impl Component for Size {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use htmlb::CompileTimeHtmlSizeHint;
 
     #[test]
     fn sizes() {
@@ -111,7 +114,11 @@ mod tests {
         ];
         for n in edges.into_iter().chain(more) {
             let size = Size(n);
-            assert_eq!(size.len_hint(), size.to_html().len(), "{n}");
+            assert_eq!(
+                <Size as CompileTimeHtmlSizeHint>::SIZE_HINT + size.size_hint(),
+                size.to_html().len(),
+                "{n}"
+            );
         }
     }
 }

@@ -1,5 +1,5 @@
 use htmlb::prelude::*;
-use htmlb::{Component, color_scheme, viewport};
+use htmlb::{Component, RunTimeHtmlSizeHint, color_scheme, viewport};
 
 /// A whole page: the doctype, `<html lang="en">`, and a `<head>` that already declares the
 /// charset, viewport and color schemes. Give it the rest of the [`head`](Document::head)
@@ -46,7 +46,9 @@ impl<H: IntoHtml, B: IntoHtml> Component for Document<H, B> {
             )),
         )
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.head.len_hint() - H::MIN_LEN + self.body.len_hint() - B::MIN_LEN
+}
+impl<H: IntoHtml, B: IntoHtml> RunTimeHtmlSizeHint for Document<H, B> {
+    fn size_hint(&self) -> usize {
+        self.head.size_hint() + self.body.size_hint()
     }
 }

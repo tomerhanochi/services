@@ -1,5 +1,5 @@
 use htmlb::prelude::*;
-use htmlb::{AttrValue, Component};
+use htmlb::{AttrValue, Component, RunTimeHtmlSizeHint};
 
 const SHEET: &str = "md-sheet";
 const SHEET_HANDLE: &str = "md-sheet__handle";
@@ -45,7 +45,9 @@ impl<I: AttrValue, H: IntoHtml, C: IntoHtml> Component for Sheet<I, H, C> {
                 self.content,
             ))
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.id.value_len_hint() + self.headline.len_hint() + self.content.len_hint()
+}
+impl<I: AttrValue, H: IntoHtml, C: IntoHtml> RunTimeHtmlSizeHint for Sheet<I, H, C> {
+    fn size_hint(&self) -> usize {
+        self.id.size_hint() + self.headline.size_hint() + self.content.size_hint()
     }
 }

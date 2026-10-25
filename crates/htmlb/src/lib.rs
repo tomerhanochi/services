@@ -23,17 +23,16 @@
 //!
 //! # Size estimates
 //!
-//! Every node reports how many bytes it will write:
+//! Every node has a compile-time baseline and can report an additional runtime estimate:
 //!
-//! - [`IntoHtml::MIN_LEN`]: a compile-time constant computed from the *type* alone:
+//! - [`CompileTimeHtmlSizeHint::SIZE_HINT`]: a compile-time constant computed from the *type* alone:
 //!   tag names, `<`/`>`/`</…>`, attribute names, `="`, and nested constants.
-//! - [`IntoHtml::len_hint`]: a cheap runtime lower bound: adds text lengths (unescaped)
-//!   and number widths. Never larger than the output.
+//! - [`RunTimeHtmlSizeHint::size_hint`]: bytes to add to that baseline for value-dependent output,
+//!   such as text lengths (unescaped) and number widths.
 //!
-//! [`IntoHtml::to_html`] reserves `len_hint()` plus 1/8 headroom for escape expansion, so
-//! a page renders with one allocation. Lists made with
-//! [`into_html_cloned`](IteratorExt::into_html_cloned) contribute their full length;
-//! [`into_html`](IteratorExt::into_html) lists only `count × MIN_LEN`.
+//! [`IntoHtml::to_html`] reserves `SIZE_HINT + size_hint()` plus 1/8 headroom for escape
+//! expansion. Lists made with [`into_html_cloned`](IteratorExt::into_html_cloned) contribute
+//! their full length; [`into_html`](IteratorExt::into_html) lists only `count × SIZE_HINT`.
 //!
 //! There is deliberately no exact length: counting escapes means scanning every string
 //! twice, which benchmarks showed costs more than the reallocation it avoids.
@@ -86,6 +85,7 @@ mod containers;
 mod elements;
 mod escape;
 mod num;
+mod size_hint;
 mod text;
 
 pub use attrs::{
@@ -96,36 +96,28 @@ pub use component::Component;
 pub use components::{color_scheme, favicon, script, stylesheet, viewport};
 pub use containers::{ClonedIterHtml, Either, IterHtml, IteratorExt};
 pub use elements::{Child, El, HasChildren, Kind, Tag, Unescaped, kind, tag, *};
+pub use size_hint::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
 pub use text::{Display, Doctype, Raw, RawStr, display, doctype, raw};
 
 pub mod prelude {
     pub use crate::{
-        Either, IntoHtml, IteratorExt, attrs::enums::*, display, doctype,
-        elements::constructors::*, raw,
+        CompileTimeHtmlSizeHint, Either, IntoHtml, IteratorExt, RunTimeHtmlSizeHint,
+        attrs::enums::*, display, doctype, elements::constructors::*, raw,
     };
 }
 
 /// Anything that can be rendered as HTML: elements, text, numbers, and containers of them.
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be rendered as HTML")]
-pub trait IntoHtml: Sized {
-    /// Bytes this value always writes, known from its type alone.
-    const MIN_LEN: usize;
-
-    /// Cheap lower bound on the bytes [`write_html`](Self::write_html) will write:
-    /// exact for markup and numbers, unescaped length for text.
-    #[inline]
-    fn len_hint(&self) -> usize {
-        Self::MIN_LEN
-    }
-
+pub trait IntoHtml: CompileTimeHtmlSizeHint + RunTimeHtmlSizeHint + Sized {
     /// Appends the HTML to `buf`. Does not reserve.
     fn write_html(self, buf: &mut String);
 
-    /// Reserves [`len_hint`](Self::len_hint) plus 1/8 headroom for escape expansion, then
-    /// renders. To reuse a buffer across renders, call [`write_html`](Self::write_html).
+    /// Reserves [`SIZE_HINT`](CompileTimeHtmlSizeHint::SIZE_HINT) plus the runtime addition and
+    /// 1/8 headroom for escape expansion, then renders. To reuse a buffer, call
+    /// [`write_html`](Self::write_html).
     #[hotpath::measure]
     fn to_html(self) -> String {
-        let hint = self.len_hint();
+        let hint = Self::SIZE_HINT + self.size_hint();
         let mut buf = String::with_capacity(hint + hint / 8);
         self.write_html(&mut buf);
         buf

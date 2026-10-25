@@ -2,9 +2,9 @@
 
 use std::marker::PhantomData;
 
-use crate::IntoHtml;
 use crate::attrs::{Attr, AttrValue, Attribute, BoolAttr, DynAttr, Typed, enums::*, keys as attr};
 use crate::class::{ClassList, Classes};
+use crate::{CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint};
 
 /// What an element does with children.
 pub mod kind {
@@ -65,12 +65,16 @@ impl<S: AsRef<str>> Child<RawText> for S {
 /// A `<script>`/`<style>` child, written verbatim. Never put untrusted input here.
 pub struct Unescaped<S>(S);
 
-impl<S: AsRef<str>> IntoHtml for Unescaped<S> {
-    const MIN_LEN: usize = 0;
+impl<S: AsRef<str>> CompileTimeHtmlSizeHint for Unescaped<S> {
+    const SIZE_HINT: usize = 0;
+}
+impl<S: AsRef<str>> RunTimeHtmlSizeHint for Unescaped<S> {
     #[inline]
-    fn len_hint(&self) -> usize {
+    fn size_hint(&self) -> usize {
         self.0.as_ref().len()
     }
+}
+impl<S: AsRef<str>> IntoHtml for Unescaped<S> {
     #[inline]
     fn write_html(self, buf: &mut String) {
         buf.push_str(self.0.as_ref())
@@ -143,23 +147,27 @@ impl<T: Tag, A, C> El<T, A, C> {
     }
 }
 
-impl<T: Tag, A: Attribute, C: IntoHtml> IntoHtml for El<T, A, C> {
-    const MIN_LEN: usize = if <T::Kind as Kind>::VOID {
+impl<T: Tag, A: Attribute, C: IntoHtml> CompileTimeHtmlSizeHint for El<T, A, C> {
+    const SIZE_HINT: usize = if <T::Kind as Kind>::VOID {
         T::OPEN.len() + 1 + A::ATTRS_MIN_LEN
     } else {
-        T::OPEN.len() + 1 + A::ATTRS_MIN_LEN + C::MIN_LEN + T::CLOSE.len()
+        T::OPEN.len() + 1 + A::ATTRS_MIN_LEN + C::SIZE_HINT + T::CLOSE.len()
     };
+}
 
+impl<T: Tag, A: Attribute, C: IntoHtml> RunTimeHtmlSizeHint for El<T, A, C> {
     #[inline]
-    fn len_hint(&self) -> usize {
-        let open = T::OPEN.len() + 1 + self.attrs.attrs_len_hint();
+    fn size_hint(&self) -> usize {
+        let attrs = self.attrs.attrs_size_hint();
         if <T::Kind as Kind>::VOID {
-            open
+            attrs
         } else {
-            open + self.children.len_hint() + T::CLOSE.len()
+            attrs + self.children.size_hint()
         }
     }
+}
 
+impl<T: Tag, A: Attribute, C: IntoHtml> IntoHtml for El<T, A, C> {
     #[inline]
     fn write_html(self, buf: &mut String) {
         if A::EMPTY {

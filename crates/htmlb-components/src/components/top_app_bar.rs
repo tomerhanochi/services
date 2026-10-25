@@ -1,5 +1,5 @@
-use htmlb::Component;
 use htmlb::prelude::*;
+use htmlb::{Component, RunTimeHtmlSizeHint};
 
 const TOP_APP_BAR: &str = "md-top-app-bar";
 const TOP_APP_BAR_NAVIGATION: &str = "md-top-app-bar__navigation";
@@ -71,10 +71,14 @@ impl<H: IntoHtml, N: IntoHtml, S: IntoHtml, A: IntoHtml> Component for TopAppBar
                 .map(|a| div().class(TOP_APP_BAR_ACTIONS).child(a)),
         ))
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.headline.len_hint()
-            + self.navigation.len_hint()
-            + self.subtitle.len_hint()
-            + self.actions.len_hint()
+}
+impl<H: IntoHtml, N: IntoHtml, S: IntoHtml, A: IntoHtml> RunTimeHtmlSizeHint
+    for TopAppBar<H, N, S, A>
+{
+    fn size_hint(&self) -> usize {
+        self.headline.size_hint()
+            + self.navigation.size_hint()
+            + self.subtitle.size_hint()
+            + self.actions.size_hint()
     }
 }

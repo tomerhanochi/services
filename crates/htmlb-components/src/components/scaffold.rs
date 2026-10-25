@@ -1,5 +1,5 @@
-use htmlb::Component;
 use htmlb::prelude::*;
+use htmlb::{Component, RunTimeHtmlSizeHint};
 
 const SCAFFOLD: &str = "md-scaffold";
 const SCAFFOLD_BODY: &str = "md-scaffold__body";
@@ -52,10 +52,14 @@ impl<T: IntoHtml, B: IntoHtml, F: IntoHtml, S: IntoHtml> Component for Scaffold<
             self.snackbar.map(super::snackbar),
         ))
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.top_app_bar.len_hint()
-            + self.body.len_hint()
-            + self.bottom_app_bar.len_hint()
-            + self.snackbar.len_hint()
+}
+impl<T: IntoHtml, B: IntoHtml, F: IntoHtml, S: IntoHtml> RunTimeHtmlSizeHint
+    for Scaffold<T, B, F, S>
+{
+    fn size_hint(&self) -> usize {
+        self.top_app_bar.size_hint()
+            + self.body.size_hint()
+            + self.bottom_app_bar.size_hint()
+            + self.snackbar.size_hint()
     }
 }

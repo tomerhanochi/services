@@ -1,5 +1,5 @@
-use htmlb::Component;
 use htmlb::prelude::*;
+use htmlb::{Component, RunTimeHtmlSizeHint};
 
 use crate::action::{Action, Actionable, Inert};
 use crate::icon::Icon;
@@ -121,7 +121,9 @@ impl<L: IntoHtml, I: IntoHtml, A: Action> Component for Button<L, I, A> {
             (self.icon, span().class(BUTTON_LABEL).child(self.label)),
         )
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.label.len_hint() + self.icon.len_hint()
+}
+impl<L: IntoHtml, I: IntoHtml, A: Action> RunTimeHtmlSizeHint for Button<L, I, A> {
+    fn size_hint(&self) -> usize {
+        self.label.size_hint() + self.icon.size_hint()
     }
 }

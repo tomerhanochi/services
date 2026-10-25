@@ -3,7 +3,7 @@
 use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use htmlb::{Component, IntoHtml};
+use htmlb::{Component, IntoHtml, RunTimeHtmlSizeHint};
 
 /// `2024-05-01` (UTC).
 #[derive(Clone, Copy)]
@@ -24,7 +24,9 @@ impl Component for Date {
     fn render(self) -> impl IntoHtml {
         htmlb::display(self)
     }
-    fn dynamic_len_hint(&self) -> usize {
+}
+impl RunTimeHtmlSizeHint for Date {
+    fn size_hint(&self) -> usize {
         // `YYYY-MM-DD`; longer only after the year 9999.
         10
     }
@@ -48,6 +50,7 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+    use htmlb::CompileTimeHtmlSizeHint;
 
     #[test]
     fn dates() {
@@ -56,6 +59,9 @@ mod tests {
         assert_eq!(d(951_782_400), "2000-02-29");
         assert_eq!(d(1_791_072_000), "2026-10-04");
         let date = Date(UNIX_EPOCH);
-        assert_eq!(date.len_hint(), date.to_html().len());
+        assert_eq!(
+            <Date as CompileTimeHtmlSizeHint>::SIZE_HINT + date.size_hint(),
+            date.to_html().len()
+        );
     }
 }

@@ -1,5 +1,5 @@
 use htmlb::prelude::*;
-use htmlb::{AttrValue, Component};
+use htmlb::{AttrValue, Component, RunTimeHtmlSizeHint};
 
 const CHECKBOX: &str = "md-checkbox";
 
@@ -39,9 +39,9 @@ impl<N: AttrValue, V: AttrValue, F: AttrValue> Component for Checkbox<N, V, F> {
             .value(self.value)
             .form(self.form)
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.name.value_len_hint()
-            + self.value.value_len_hint()
-            + self.form.value_len_hint()
+}
+impl<N: AttrValue, V: AttrValue, F: AttrValue> RunTimeHtmlSizeHint for Checkbox<N, V, F> {
+    fn size_hint(&self) -> usize {
+        self.name.size_hint() + self.value.size_hint() + self.form.size_hint()
     }
 }

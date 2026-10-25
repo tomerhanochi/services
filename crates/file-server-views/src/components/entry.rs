@@ -1,4 +1,5 @@
 use file_server_core::prelude::{Capabilities, Entry, EntryKind, Location, Metadata};
+use htmlb::RunTimeHtmlSizeHint;
 use htmlb::prelude::*;
 use htmlb_components::action::{Download, Link};
 use htmlb_components::prelude::*;
@@ -20,15 +21,17 @@ impl htmlb::Component for Details {
             }
         }
     }
-    fn dynamic_len_hint(&self) -> usize {
+}
+impl RunTimeHtmlSizeHint for Details {
+    fn size_hint(&self) -> usize {
         match self.0.kind {
             EntryKind::Directory => "Folder".len(),
             EntryKind::File => {
-                Size(self.0.size).len_hint()
+                Size(self.0.size).size_hint()
                     + self
                         .0
                         .modified
-                        .map_or(0, |m| " · ".len() + Date(m).len_hint())
+                        .map_or(0, |m| " · ".len() + Date(m).size_hint())
             }
         }
     }

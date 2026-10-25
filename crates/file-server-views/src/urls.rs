@@ -3,7 +3,7 @@
 use std::fmt::Write;
 
 use file_server_core::prelude::{EntryName, Location, MountName, RelPath};
-use htmlb::AttrValue;
+use htmlb::{AttrValue, CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
 
 pub const HOME: &str = "/";
 pub const LOGIN: &str = "/login";
@@ -136,20 +136,6 @@ fn encode(out: &mut String, s: &str) {
 }
 
 impl AttrValue for Href<'_> {
-    const VALUE_MIN_LEN: usize = 3;
-
-    fn value_len_hint(&self) -> usize {
-        self.route.prefix().len()
-            + self.location.mount.as_str().len()
-            + self.components().map(|c| c.len() + 1).sum::<usize>()
-            + self
-                .items
-                .iter()
-                .map(|i| i.as_str().len() + 6)
-                .sum::<usize>()
-            + 1
-    }
-
     fn write_value(self, out: &mut String) {
         out.push_str(self.route.prefix());
         out.push_str(self.location.mount.as_str());
@@ -180,16 +166,28 @@ impl AttrValue for Href<'_> {
     }
 }
 
+impl CompileTimeHtmlSizeHint for Href<'_> {
+    const SIZE_HINT: usize = 3;
+}
+impl RunTimeHtmlSizeHint for Href<'_> {
+    fn size_hint(&self) -> usize {
+        (self.route.prefix().len()
+            + self.location.mount.as_str().len()
+            + self.components().map(|c| c.len() + 1).sum::<usize>()
+            + self
+                .items
+                .iter()
+                .map(|i| i.as_str().len() + 6)
+                .sum::<usize>()
+            + 1)
+        .saturating_sub(Self::SIZE_HINT)
+    }
+}
+
 /// `/login?next=<path>`, `next` already being a path on this site.
 pub struct LoginHref<'a>(pub &'a str);
 
 impl AttrValue for LoginHref<'_> {
-    const VALUE_MIN_LEN: usize = LOGIN.len();
-
-    fn value_len_hint(&self) -> usize {
-        LOGIN.len() + 6 + self.0.len()
-    }
-
     fn write_value(self, out: &mut String) {
         out.push_str(LOGIN);
         if !self.0.is_empty() && self.0 != HOME {
@@ -198,20 +196,32 @@ impl AttrValue for LoginHref<'_> {
         }
     }
 }
+impl CompileTimeHtmlSizeHint for LoginHref<'_> {
+    const SIZE_HINT: usize = LOGIN.len();
+}
+impl RunTimeHtmlSizeHint for LoginHref<'_> {
+    fn size_hint(&self) -> usize {
+        LOGIN.len() + 6 + self.0.len() - Self::SIZE_HINT
+    }
+}
 
 /// `/m/{mount}/`, without building a `Location`.
 #[derive(Clone, Copy)]
 pub struct MountHref<'a>(pub &'a MountName);
 
 impl AttrValue for MountHref<'_> {
-    const VALUE_MIN_LEN: usize = 4;
-    fn value_len_hint(&self) -> usize {
-        4 + self.0.as_str().len()
-    }
     fn write_value(self, out: &mut String) {
         out.push_str(Route::Browse.prefix());
         out.push_str(self.0.as_str()); // `[a-z0-9_-]`: nothing to encode.
         out.push('/');
+    }
+}
+impl CompileTimeHtmlSizeHint for MountHref<'_> {
+    const SIZE_HINT: usize = 4;
+}
+impl RunTimeHtmlSizeHint for MountHref<'_> {
+    fn size_hint(&self) -> usize {
+        self.0.as_str().len()
     }
 }
 
@@ -226,12 +236,16 @@ impl ParentHref {
 }
 
 impl AttrValue for ParentHref {
-    const VALUE_MIN_LEN: usize = 3;
-    fn value_len_hint(&self) -> usize {
-        Href::dir(&self.0).value_len_hint()
-    }
     fn write_value(self, out: &mut String) {
         Href::dir(&self.0).write_value(out)
+    }
+}
+impl CompileTimeHtmlSizeHint for ParentHref {
+    const SIZE_HINT: usize = 3;
+}
+impl RunTimeHtmlSizeHint for ParentHref {
+    fn size_hint(&self) -> usize {
+        Href::dir(&self.0).size_hint()
     }
 }
 
@@ -240,13 +254,17 @@ impl AttrValue for ParentHref {
 pub struct SelectHref<'a>(pub &'a Location);
 
 impl AttrValue for SelectHref<'_> {
-    const VALUE_MIN_LEN: usize = 10;
-    fn value_len_hint(&self) -> usize {
-        Href::dir(self.0).value_len_hint() + 7
-    }
     fn write_value(self, out: &mut String) {
         Href::dir(self.0).write_value(out);
         out.push_str("?select");
+    }
+}
+impl CompileTimeHtmlSizeHint for SelectHref<'_> {
+    const SIZE_HINT: usize = 10;
+}
+impl RunTimeHtmlSizeHint for SelectHref<'_> {
+    fn size_hint(&self) -> usize {
+        Href::dir(self.0).size_hint() + 7
     }
 }
 
@@ -254,12 +272,16 @@ impl AttrValue for SelectHref<'_> {
 pub struct OwnedPicker<'a>(pub Href<'a>, pub RelPath);
 
 impl AttrValue for OwnedPicker<'_> {
-    const VALUE_MIN_LEN: usize = 3;
-    fn value_len_hint(&self) -> usize {
-        self.0.to(&self.1).value_len_hint()
-    }
     fn write_value(self, out: &mut String) {
         self.0.to(&self.1).write_value(out)
+    }
+}
+impl CompileTimeHtmlSizeHint for OwnedPicker<'_> {
+    const SIZE_HINT: usize = 3;
+}
+impl RunTimeHtmlSizeHint for OwnedPicker<'_> {
+    fn size_hint(&self) -> usize {
+        self.0.to(&self.1).size_hint()
     }
 }
 
@@ -268,15 +290,19 @@ impl AttrValue for OwnedPicker<'_> {
 pub struct PickerChild<'a>(pub Href<'a>, pub &'a EntryName);
 
 impl AttrValue for PickerChild<'_> {
-    const VALUE_MIN_LEN: usize = 3;
-    fn value_len_hint(&self) -> usize {
-        self.0.value_len_hint() + 3 + self.1.as_str().len()
-    }
     fn write_value(self, out: &mut String) {
         self.0.write_value(out);
         // `to` already ends the URL; append `/child` (or the first component).
         out.push_str(if out.ends_with("to=") { "" } else { "%2F" });
         encode(out, self.1.as_str());
+    }
+}
+impl CompileTimeHtmlSizeHint for PickerChild<'_> {
+    const SIZE_HINT: usize = 3;
+}
+impl RunTimeHtmlSizeHint for PickerChild<'_> {
+    fn size_hint(&self) -> usize {
+        self.0.size_hint() + 3 + self.1.as_str().len()
     }
 }
 

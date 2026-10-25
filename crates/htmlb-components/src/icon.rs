@@ -69,12 +69,16 @@ macro_rules! icons {
             }
         }
 
-        impl $crate::icon::__private::IntoHtml for $enum {
-            const MIN_LEN: usize = $crate::icon::__private::MARKUP_LEN;
+        impl $crate::icon::__private::CompileTimeHtmlSizeHint for $enum {
+            const SIZE_HINT: usize = $crate::icon::__private::MARKUP_LEN;
+        }
+        impl $crate::icon::__private::RunTimeHtmlSizeHint for $enum {
             #[inline]
-            fn len_hint(&self) -> usize {
-                Self::MIN_LEN + $crate::icon::Icon::name(*self).len()
+            fn size_hint(&self) -> usize {
+                $crate::icon::Icon::name(*self).len()
             }
+        }
+        impl $crate::icon::__private::IntoHtml for $enum {
             #[inline]
             fn write_html(self, buf: &mut String) {
                 $crate::icon::__private::write($crate::icon::Icon::name(self), buf)
@@ -87,7 +91,7 @@ macro_rules! icons {
 #[doc(hidden)]
 pub mod __private {
     pub use super::names::lookup;
-    pub use htmlb::IntoHtml;
+    pub use htmlb::{CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint};
 
     const PREFIX: &str = "https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=";
     // `block` hides each ligature's text until the font arrives, rather than flashing it.
@@ -204,7 +208,10 @@ mod tests {
     #[test]
     fn length_is_exact() {
         for icon in [Icons::ArrowBack, Icons::Draft, Icons::MoreVert] {
-            assert_eq!(icon.len_hint(), icon.to_html().len());
+            assert_eq!(
+                <Icons as htmlb::CompileTimeHtmlSizeHint>::SIZE_HINT + icon.size_hint(),
+                icon.to_html().len()
+            );
         }
     }
 }

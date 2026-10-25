@@ -1,4 +1,5 @@
 use file_server_core::prelude::{EntryName, Location, MountName};
+use htmlb::RunTimeHtmlSizeHint;
 use htmlb::prelude::*;
 use htmlb_components::prelude::*;
 
@@ -18,7 +19,9 @@ impl htmlb::Component for Breadcrumb<'_> {
     fn render(self) -> impl IntoHtml {
         path(self.0.mount.as_str(), self.0.path.components())
     }
-    fn dynamic_len_hint(&self) -> usize {
+}
+impl RunTimeHtmlSizeHint for Breadcrumb<'_> {
+    fn size_hint(&self) -> usize {
         self.0.mount.as_str().len()
             + self
                 .0
@@ -42,8 +45,10 @@ impl htmlb::Component for Ancestors<'_> {
             .split_last()
             .map(|(_, above)| path(self.0.mount.as_str(), above))
     }
-    fn dynamic_len_hint(&self) -> usize {
-        Breadcrumb(self.0).dynamic_len_hint()
+}
+impl RunTimeHtmlSizeHint for Ancestors<'_> {
+    fn size_hint(&self) -> usize {
+        Breadcrumb(self.0).size_hint()
     }
 }
 

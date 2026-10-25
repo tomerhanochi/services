@@ -1,5 +1,5 @@
 use htmlb::prelude::*;
-use htmlb::{Component, favicon, stylesheet};
+use htmlb::{Component, RunTimeHtmlSizeHint, favicon, stylesheet};
 use htmlb_components::document;
 
 use crate::icons::Icons;
@@ -48,7 +48,9 @@ impl<T: IntoHtml, C: IntoHtml> Component for Page<T, C> {
             ))
             .body(self.content)
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.title.len_hint() - T::MIN_LEN + self.content.len_hint() - C::MIN_LEN
+}
+impl<T: IntoHtml, C: IntoHtml> RunTimeHtmlSizeHint for Page<T, C> {
+    fn size_hint(&self) -> usize {
+        self.title.size_hint() + self.content.size_hint()
     }
 }

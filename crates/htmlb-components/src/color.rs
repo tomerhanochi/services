@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use htmlb::{AttrValue, IntoHtml};
+use htmlb::{AttrValue, CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint};
 
 /// An opaque sRGB color.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -49,18 +49,21 @@ impl Color {
 
 /// `#rrggbb`, e.g. for `<meta name="theme-color" content>`.
 impl AttrValue for Color {
-    const VALUE_MIN_LEN: usize = 7;
-    fn value_len_hint(&self) -> usize {
-        7
-    }
     fn write_value(self, buf: &mut String) {
         self.write_hex(buf)
     }
 }
 
 /// `#rrggbb` as text.
+impl CompileTimeHtmlSizeHint for Color {
+    const SIZE_HINT: usize = 7;
+}
+impl RunTimeHtmlSizeHint for Color {
+    fn size_hint(&self) -> usize {
+        0
+    }
+}
 impl IntoHtml for Color {
-    const MIN_LEN: usize = 7;
     fn write_html(self, buf: &mut String) {
         self.write_hex(buf)
     }

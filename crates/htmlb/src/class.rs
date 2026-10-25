@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use crate::{AttrValue, escape};
+use crate::{AttrValue, CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint, escape};
 
 /// One or more class names. Tuples are lists: `.class(("btn", active.then_some("active")))`
 /// writes `btn active`, or `btn` when inactive. Empty and `None` parts are skipped, so no
@@ -26,20 +26,24 @@ pub trait ClassList {
 pub struct Classes<C>(pub(crate) C);
 
 impl<C: ClassList> AttrValue for Classes<C> {
-    const VALUE_MIN_LEN: usize = 0;
     const ALWAYS_PRESENT: bool = C::ALWAYS_PRESENT;
     #[inline]
     fn is_present(&self) -> bool {
         self.0.is_present()
     }
     #[inline]
-    fn value_len_hint(&self) -> usize {
-        self.0.classes_len_hint().saturating_sub(1)
-    }
-    #[inline]
     fn write_value(self, buf: &mut String) {
         let start = buf.len();
         self.0.write_classes(buf, start)
+    }
+}
+
+impl<C: ClassList> CompileTimeHtmlSizeHint for Classes<C> {
+    const SIZE_HINT: usize = 0;
+}
+impl<C: ClassList> RunTimeHtmlSizeHint for Classes<C> {
+    fn size_hint(&self) -> usize {
+        self.0.classes_len_hint().saturating_sub(1)
     }
 }
 

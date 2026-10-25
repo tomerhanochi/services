@@ -6,19 +6,22 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use crate::IntoHtml;
-use crate::{escape, num};
+use crate::{CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint, escape, num};
 
 macro_rules! strings {
     ($([$($gen:tt)*] $ty:ty => |$s:ident| $as_str:expr;)*) => {$(
-        impl<$($gen)*> IntoHtml for $ty {
-            const MIN_LEN: usize = 0;
+        impl<$($gen)*> CompileTimeHtmlSizeHint for $ty {
+            const SIZE_HINT: usize = 0;
+        }
+        impl<$($gen)*> RunTimeHtmlSizeHint for $ty {
             #[inline]
-            fn len_hint(&self) -> usize {
+            fn size_hint(&self) -> usize {
                 let $s = self;
                 let s: &str = $as_str;
                 s.len()
             }
+        }
+        impl<$($gen)*> IntoHtml for $ty {
             #[inline]
             fn write_html(self, buf: &mut String) {
                 let $s = &self;
@@ -37,27 +40,34 @@ strings! {
 }
 
 impl IntoHtml for char {
-    const MIN_LEN: usize = 1;
-    #[inline]
-    fn len_hint(&self) -> usize {
-        self.len_utf8()
-    }
-    #[inline]
     fn write_html(self, buf: &mut String) {
         escape::write(buf, self.encode_utf8(&mut [0; 4]))
     }
 }
+impl CompileTimeHtmlSizeHint for char {
+    const SIZE_HINT: usize = 1;
+}
+impl RunTimeHtmlSizeHint for char {
+    #[inline]
+    fn size_hint(&self) -> usize {
+        self.len_utf8() - Self::SIZE_HINT
+    }
+}
 
-/// Numbers never need escaping. Integer `len_hint` is exact; floats and 128-bit
-/// integers report 1 (`to_html`'s headroom absorbs the difference).
+/// Numbers never need escaping. Integer runtime hints report the digits beyond the
+/// type-level baseline; floats and 128-bit integers contribute no runtime hint.
 macro_rules! numbers {
     (@int $($ty:ty)* => $wide:ty, $digits:path, $write:path) => {$(
-        impl IntoHtml for $ty {
-            const MIN_LEN: usize = 1;
+        impl CompileTimeHtmlSizeHint for $ty {
+            const SIZE_HINT: usize = 1;
+        }
+        impl RunTimeHtmlSizeHint for $ty {
             #[inline]
-            fn len_hint(&self) -> usize {
-                $digits(*self as $wide)
+            fn size_hint(&self) -> usize {
+                $digits(*self as $wide) - Self::SIZE_HINT
             }
+        }
+        impl IntoHtml for $ty {
             #[inline]
             fn write_html(self, buf: &mut String) {
                 $write(buf, self as $wide)
@@ -65,8 +75,13 @@ macro_rules! numbers {
         }
     )*};
     (@display $($ty:ty)*) => {$(
+        impl CompileTimeHtmlSizeHint for $ty {
+            const SIZE_HINT: usize = 1;
+        }
+        impl RunTimeHtmlSizeHint for $ty {
+            fn size_hint(&self) -> usize { 0 }
+        }
         impl IntoHtml for $ty {
-            const MIN_LEN: usize = 1;
             #[inline]
             fn write_html(self, buf: &mut String) {
                 num::write_display(buf, self)
@@ -95,24 +110,22 @@ pub fn raw<S: AsRef<str>>(html: S) -> Raw<S> {
 }
 
 impl<S: AsRef<str>> crate::AttrValue for Raw<S> {
-    const VALUE_MIN_LEN: usize = 0;
-    #[inline]
-    fn value_len_hint(&self) -> usize {
-        self.0.as_ref().len()
-    }
     #[inline]
     fn write_value(self, buf: &mut String) {
         buf.push_str(self.0.as_ref())
     }
 }
 
-impl<S: AsRef<str>> IntoHtml for Raw<S> {
-    const MIN_LEN: usize = 0;
+impl<S: AsRef<str>> CompileTimeHtmlSizeHint for Raw<S> {
+    const SIZE_HINT: usize = 0;
+}
+impl<S: AsRef<str>> RunTimeHtmlSizeHint for Raw<S> {
     #[inline]
-    fn len_hint(&self) -> usize {
+    fn size_hint(&self) -> usize {
         self.0.as_ref().len()
     }
-    #[inline]
+}
+impl<S: AsRef<str>> IntoHtml for Raw<S> {
     fn write_html(self, buf: &mut String) {
         buf.push_str(self.0.as_ref())
     }
@@ -140,8 +153,15 @@ impl fmt::Write for Escaping<'_> {
     }
 }
 
+impl<T: fmt::Display> CompileTimeHtmlSizeHint for Display<T> {
+    const SIZE_HINT: usize = 0;
+}
+impl<T: fmt::Display> RunTimeHtmlSizeHint for Display<T> {
+    fn size_hint(&self) -> usize {
+        0
+    }
+}
 impl<T: fmt::Display> IntoHtml for Display<T> {
-    const MIN_LEN: usize = 0;
     #[inline]
     fn write_html(self, buf: &mut String) {
         use fmt::Write;
@@ -150,11 +170,6 @@ impl<T: fmt::Display> IntoHtml for Display<T> {
 }
 
 impl<T: fmt::Display> crate::AttrValue for Display<T> {
-    const VALUE_MIN_LEN: usize = 0;
-    #[inline]
-    fn value_len_hint(&self) -> usize {
-        0
-    }
     #[inline]
     fn write_value(self, buf: &mut String) {
         use fmt::Write;
@@ -169,8 +184,15 @@ pub fn doctype() -> Doctype {
     Doctype
 }
 
+impl CompileTimeHtmlSizeHint for Doctype {
+    const SIZE_HINT: usize = "<!DOCTYPE html>".len();
+}
+impl RunTimeHtmlSizeHint for Doctype {
+    fn size_hint(&self) -> usize {
+        0
+    }
+}
 impl IntoHtml for Doctype {
-    const MIN_LEN: usize = "<!DOCTYPE html>".len();
     #[inline]
     fn write_html(self, buf: &mut String) {
         buf.push_str("<!DOCTYPE html>")

@@ -1,5 +1,5 @@
-use htmlb::Component;
 use htmlb::prelude::*;
+use htmlb::{Component, RunTimeHtmlSizeHint};
 
 use crate::ColorRole;
 
@@ -84,7 +84,9 @@ impl<C: IntoHtml> Component for Surface<C> {
             .class((SURFACE, role_class(self.role)))
             .child(self.content)
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.content.len_hint()
+}
+impl<C: IntoHtml> RunTimeHtmlSizeHint for Surface<C> {
+    fn size_hint(&self) -> usize {
+        self.content.size_hint()
     }
 }

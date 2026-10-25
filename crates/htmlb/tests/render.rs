@@ -1,22 +1,22 @@
 use htmlb::prelude::*;
 
-/// Size estimates must be lower bounds: MIN_LEN <= len_hint <= output length.
+/// Runtime additions keep the total estimate between SIZE_HINT and the output length.
 /// Takes an expression (not a value) so the view can be built twice; elements aren't Clone.
 macro_rules! check {
     ($view:expr, $expected:expr) => {{
         let make = || $view;
         let v = make();
-        let hint = <_ as IntoHtml>::len_hint(&v);
-        let min = min_len_of(&v);
+        let min = min_size_hint(&v);
+        let hint = min + <_ as RunTimeHtmlSizeHint>::size_hint(&v);
         let out = make().to_html();
         assert_eq!(out, $expected);
-        assert!(min <= hint, "MIN_LEN {min} > len_hint {hint}");
-        assert!(hint <= out.len(), "len_hint {hint} > output {}", out.len());
+        assert!(min <= hint, "SIZE_HINT {min} > size_hint {hint}");
+        assert!(hint <= out.len(), "size_hint {hint} > output {}", out.len());
     }};
 }
 
-fn min_len_of<V: IntoHtml>(_: &V) -> usize {
-    V::MIN_LEN
+fn min_size_hint<V: CompileTimeHtmlSizeHint>(_: &V) -> usize {
+    V::SIZE_HINT
 }
 
 #[test]
@@ -149,8 +149,8 @@ fn iterators() {
     // single pass: cheap lower bound
     let v = ul().child(items.iter().map(|s| li().child(*s)).into_html());
     assert_eq!(
-        <_ as IntoHtml>::len_hint(&v),
-        "<ul></ul>".len() + 3 * "<li></li>".len()
+        <_ as RunTimeHtmlSizeHint>::size_hint(&v),
+        3 * "<li></li>".len()
     );
     assert_eq!(v.to_html(), "<ul><li>a</li><li>b&#60;</li><li>c</li></ul>");
     // cloned: precise
@@ -232,13 +232,16 @@ fn min_len_is_computed_from_the_type() {
         ((), htmlb::El<htmlb::tag::b, (), ((), &'static str)>),
     >;
     assert_eq!(
-        <View as IntoHtml>::MIN_LEN,
+        <View as CompileTimeHtmlSizeHint>::SIZE_HINT,
         r#"<a class=""><b></b></a>"#.len()
     );
     let _: fn() -> View = || a().class("x").child(b().child("y"));
-    // Option attributes contribute nothing to MIN_LEN, required ones do.
-    assert_eq!(min_len_of(&li().class(Some("x"))), "<li></li>".len());
-    assert_eq!(min_len_of(&li().class("x")), r#"<li class=""></li>"#.len());
+    // Option attributes contribute nothing to SIZE_HINT, required ones do.
+    assert_eq!(min_size_hint(&li().class(Some("x"))), "<li></li>".len());
+    assert_eq!(
+        min_size_hint(&li().class("x")),
+        r#"<li class=""></li>"#.len()
+    );
 }
 
 #[test]

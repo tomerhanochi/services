@@ -1,5 +1,5 @@
-use htmlb::Component;
 use htmlb::prelude::*;
+use htmlb::{Component, RunTimeHtmlSizeHint};
 
 use crate::action::{Action, Actionable, Inert};
 use crate::icon::Icon;
@@ -41,7 +41,9 @@ impl<I: Icon, L: IntoHtml, A: Action> Component for MenuItem<I, L, A> {
             (self.icon, span().child(self.label)),
         )
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.label.len_hint() + self.icon.len_hint() - I::MIN_LEN
+}
+impl<I: Icon, L: IntoHtml, A: Action> RunTimeHtmlSizeHint for MenuItem<I, L, A> {
+    fn size_hint(&self) -> usize {
+        self.label.size_hint() + self.icon.size_hint()
     }
 }

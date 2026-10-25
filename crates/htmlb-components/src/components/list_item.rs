@@ -1,5 +1,5 @@
-use htmlb::Component;
 use htmlb::prelude::*;
+use htmlb::{Component, RunTimeHtmlSizeHint};
 
 use crate::action::{Action, Actionable, Inert};
 const LIST_ITEM: &str = "md-list-item";
@@ -160,11 +160,15 @@ impl<H: IntoHtml, L: IntoHtml, S: IntoHtml, T: IntoHtml, X: IntoHtml, A: Action>
                 .map(|x| div().class(LIST_ITEM_TRAILING).child(x)),
         ))
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.headline.len_hint()
-            + self.leading.len_hint()
-            + self.supporting.len_hint()
-            + self.trailing_text.len_hint()
-            + self.trailing.len_hint()
+}
+impl<H: IntoHtml, L: IntoHtml, S: IntoHtml, T: IntoHtml, X: IntoHtml, A: Action> RunTimeHtmlSizeHint
+    for ListItem<H, L, S, T, X, A>
+{
+    fn size_hint(&self) -> usize {
+        self.headline.size_hint()
+            + self.leading.size_hint()
+            + self.supporting.size_hint()
+            + self.trailing_text.size_hint()
+            + self.trailing.size_hint()
     }
 }

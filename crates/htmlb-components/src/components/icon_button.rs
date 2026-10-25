@@ -1,5 +1,5 @@
 use htmlb::prelude::*;
-use htmlb::{AttrValue, Component};
+use htmlb::{AttrValue, Component, RunTimeHtmlSizeHint};
 
 use crate::action::{Action, Actionable, Inert};
 use crate::icon::Icon;
@@ -38,8 +38,10 @@ impl<I: Icon, L: AttrValue + Clone, A: Action> Component for IconButton<I, L, A>
         self.action
             .element(ICON_BUTTON, Some(self.label), self.icon)
     }
-    fn dynamic_len_hint(&self) -> usize {
+}
+impl<I: Icon, L: AttrValue + Clone, A: Action> RunTimeHtmlSizeHint for IconButton<I, L, A> {
+    fn size_hint(&self) -> usize {
         // `aria-label` and `title`, and the icon's name.
-        2 * self.label.value_len_hint() + self.icon.len_hint() - I::MIN_LEN
+        2 * self.label.size_hint() + self.icon.size_hint()
     }
 }

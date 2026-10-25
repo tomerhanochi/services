@@ -1,5 +1,5 @@
 use htmlb::prelude::*;
-use htmlb::{AttrValue, Component};
+use htmlb::{AttrValue, Component, RunTimeHtmlSizeHint};
 
 const TEXT_FIELD: &str = "md-text-field";
 const TEXT_FIELD_ERROR: &str = "md-text-field--error";
@@ -130,10 +130,14 @@ impl<L: IntoHtml, N: AttrValue, V: AttrValue, S: IntoHtml> Component for TextFie
                     .map(|s| span().class(TEXT_FIELD_SUPPORTING).child(s)),
             ))
     }
-    fn dynamic_len_hint(&self) -> usize {
-        self.label.len_hint()
-            + self.name.value_len_hint()
-            + self.value.value_len_hint()
-            + self.supporting.len_hint()
+}
+impl<L: IntoHtml, N: AttrValue, V: AttrValue, S: IntoHtml> RunTimeHtmlSizeHint
+    for TextField<L, N, V, S>
+{
+    fn size_hint(&self) -> usize {
+        self.label.size_hint()
+            + self.name.size_hint()
+            + self.value.size_hint()
+            + self.supporting.size_hint()
     }
 }
