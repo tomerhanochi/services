@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+
+FROM lukemathwalker/cargo-chef:0.1.78-rust-1.99.1-slim-trixie@sha256:f122e3c240d1c05668b07179cf6fa07647db2a79a110f4bb8a91d75f90d5b8e4 AS chef
+WORKDIR /workspace
+
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
+ARG BIN
+COPY --from=planner /workspace/recipe.json recipe.json
+RUN cargo chef cook --locked --release --bin "${BIN}" --recipe-path recipe.json
+COPY . .
+RUN cargo build --locked --release --bin "${BIN}" \
+    && install -D "target/release/${BIN}" /out/app
+
+FROM gcr.io/distroless/cc-debian13:nonroot AS runtime
+COPY --from=builder --chown=65532:65532 /out/app /usr/local/bin/app
+USER 65532:65532
+ENTRYPOINT ["/usr/local/bin/app"]
