@@ -1,0 +1,94 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/tomerhanochi/services/file-server
+  pullPolicy: IfNotPresent
+  tag: latest
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  fsGroup: 65532
+  fsGroupChangePolicy: OnRootMismatch
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: files.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+fileServer:
+  listen: 0.0.0.0:8080
+  publicUrl: https://files.example.com
+  database:
+    maxConnections: 10
+  oidc:
+    issuer: https://identity.example.com
+    clientId: file-server
+    redirectUri: https://files.example.com/auth/callback
+    scopes:
+      - email
+      - profile
+    sessionTtlSecs: 3600
+    loginTtlSecs: 600
+    cookieName: __Host-oidc-session
+    successPath: /
+    # Provider subject -> local file-server user ID.
+    users: {}
+  mounts:
+    - name: documents
+      path: /data/documents
+  # Each role maps mount names to viewer or editor.
+  roles: {}
+  # Local user and machine IDs map to role names.
+  users: {}
+  machines: {}
+
+# These Secrets must be created separately. Credentials are never chart values.
+secrets:
+  postgres:
+    name: file-server-postgres
+    key: url
+  oauth:
+    name: file-server-oauth
+    key: client-secret
+
+persistence:
+  enabled: true
+  existingClaim: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  storageClassName: ""
+  annotations: {}
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

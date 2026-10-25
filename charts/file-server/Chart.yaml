@@ -1,0 +1,6 @@
+apiVersion: v2
+name: file-server
+description: Self-hosted file browser with PostgreSQL-backed access and OIDC authentication.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
