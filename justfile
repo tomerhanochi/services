@@ -3,6 +3,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 # Load the command modules for services and their crates.
 mod bin
 mod container
+mod charts
 
 # List the available root commands.
 default:
@@ -12,9 +13,12 @@ default:
 fmt:
     cargo fmt --all
 
+# Check formatting for all Rust source files.
+fmt-check:
+    cargo fmt --all --check
+
 # Format and type-check the workspace.
 check:
-    cargo fmt --all --check
     cargo check --workspace --all-targets
 
 # No database required; database integration tests are explicitly ignored.
