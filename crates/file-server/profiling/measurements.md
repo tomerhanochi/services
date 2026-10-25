@@ -86,8 +86,8 @@ they are not simultaneously live memory. Route metrics exclude spawned workers.
 
 ## Historical implication for the reported 268 ms
 
-`just run` invokes plain `cargo run`, which uses the unoptimized development
-build. These release runs did not reproduce 268 ms. Development-build overhead
+`just crates file-server run` invokes plain `cargo run`, which uses the
+unoptimized development build. These release runs did not reproduce 268 ms. Development-build overhead
 in CPU-heavy password hashing is plausible, but was not measured because only
 release builds were requested.
 
@@ -100,8 +100,8 @@ were removed.
 ## Reproduce
 
 ```sh
-just measure-release /tmp/file-server-measurement-repeat 60
-MEASURE_INSTRUMENTATION=off just measure-release /tmp/file-server-measurement-control 60
+just crates file-server profiling measure-release /tmp/file-server-measurement-repeat 60
+MEASURE_INSTRUMENTATION=off just crates file-server profiling measure-release /tmp/file-server-measurement-control 60
 ```
 
 The recipe builds release, creates disposable fixtures and PostgreSQL, runs the
@@ -115,7 +115,7 @@ excluded from application RSS.
 
 ## Why the 1,000-entry HTML is 3.12 MiB
 
-`just inspect-html` renders the same fixture directly through the existing views,
+`just crates file-server inspect-html` renders the same fixture directly through the existing views,
 without a database. It reproduces exactly 3,267,820 bytes for an editor:
 
 - 5,001 inline SVG elements occupy 2,254,284 bytes (69.0% of the document).

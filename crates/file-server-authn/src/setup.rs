@@ -31,6 +31,13 @@ pub async fn configure(config: &AuthConfig) -> Result<AuthSetup, BuildError> {
     let (oidc_auth, oidc) = if let Some(config) = &config.oidc {
         let mut client_config =
             OidcConfig::new(&config.issuer, &config.client_id, &config.redirect_uri)?;
+        client_config.ca_certificate =
+            config
+                .tls_ca_file
+                .as_ref()
+                .map(std::fs::read)
+                .transpose()
+                .map_err(|error| authn_oidc::prelude::OidcError::Provider(Box::new(error)))?;
         client_config.client_secret = config.client_secret.clone().map(ClientSecret::new);
         client_config.scopes = config.scopes.iter().cloned().map(Scope::new).collect();
         client_config.session_ttl =

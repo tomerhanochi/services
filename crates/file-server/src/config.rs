@@ -113,6 +113,12 @@ impl Config {
             )
             .extract()?;
         let directory = path.parent().unwrap_or(Path::new("."));
+        if let Some(oidc) = config.auth.oidc.as_mut()
+            && let Some(ca_file) = &mut oidc.tls_ca_file
+            && ca_file.is_relative()
+        {
+            *ca_file = directory.join(&*ca_file);
+        }
         for mount in &mut config.mounts {
             if mount.path.is_relative() {
                 mount.path = directory.join(&mount.path);

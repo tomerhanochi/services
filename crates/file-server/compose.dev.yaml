@@ -1,0 +1,99 @@
+name: file-server-dev
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: file_server
+      POSTGRES_PASSWORD: development-only
+      POSTGRES_DB: file_server
+    ports:
+      - "127.0.0.1:${PGPORT:-15434}:5432"
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U file_server -d file_server"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  hydra-migrate:
+    image: oryd/hydra:v26.2.0
+    command: migrate sql up -e --yes
+    environment:
+      DSN: postgres://file_server:development-only@postgres:5432/file_server?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  hydra:
+    image: oryd/hydra:v26.2.0
+    command: serve all
+    environment:
+      DSN: postgres://file_server:development-only@postgres:5432/file_server?sslmode=disable
+      SECRETS_SYSTEM: local-development-only-secret-replace-before-deploy
+      URLS_SELF_ISSUER: https://localhost:8444/
+      URLS_SELF_PUBLIC: https://localhost:8444/
+      URLS_LOGIN: https://localhost:8445/login
+      URLS_CONSENT: https://localhost:8445/consent
+      OIDC_SUBJECT_IDENTIFIERS_SUPPORTED_TYPES: public
+    expose:
+      - "4444"
+      - "4445"
+    depends_on:
+      hydra-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  hydra-client:
+    image: curlimages/curl:8.12.1
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        until curl -fsS http://hydra:4445/health/ready >/dev/null; do sleep 1; done;
+        if ! curl -fsS http://hydra:4445/clients/file-server-local >/dev/null; then
+        curl -fsS -X POST http://hydra:4445/clients -H 'Content-Type: application/json' --data-binary '{"client_id":"file-server-local","client_secret":"local-development-client-secret","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"scope":"openid email profile","redirect_uris":["https://localhost:8443/auth/callback"],"token_endpoint_auth_method":"client_secret_basic"}';
+        fi
+    depends_on:
+      hydra:
+        condition: service_started
+    restart: "no"
+
+  consent:
+    image: oryd/hydra-login-consent-node:v26.2.0
+    environment:
+      HYDRA_ADMIN_URL: http://hydra:4445
+      MOCK_TLS_TERMINATION: "y"
+      BASE_URL: https://localhost:8445
+    expose:
+      - "3000"
+    depends_on:
+      hydra:
+        condition: service_started
+    restart: unless-stopped
+
+  https:
+    image: caddy:2-alpine
+    ports:
+      - "127.0.0.1:8443:8443"
+      - "127.0.0.1:8444:8444"
+      - "127.0.0.1:8445:8445"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - ./.dev-caddy:/data
+    depends_on:
+      hydra:
+        condition: service_started
+      consent:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /data/caddy/pki/authorities/local/root.crt"]
+      interval: 2s
+      timeout: 1s
+      retries: 20
+
+volumes:
+  postgres-dev-data:

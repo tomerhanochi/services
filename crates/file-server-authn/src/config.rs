@@ -1,6 +1,6 @@
 use authn_identity::prelude::UserId;
 use serde::Deserialize;
-use std::{collections::BTreeMap, fmt, num::NonZeroU32};
+use std::{collections::BTreeMap, fmt, num::NonZeroU32, path::PathBuf};
 
 /// Only serializable deployment inputs; setup creates all runtime resources.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -17,6 +17,8 @@ pub struct OidcAuthConfig {
     pub client_id: String,
     pub client_secret: Option<String>,
     pub redirect_uri: String,
+    /// Optional PEM root certificate for a locally hosted HTTPS OIDC provider.
+    pub tls_ca_file: Option<PathBuf>,
     #[serde(default = "default_scopes")]
     pub scopes: Vec<String>,
     #[serde(default = "session_ttl")]

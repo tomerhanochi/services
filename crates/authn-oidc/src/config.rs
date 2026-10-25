@@ -88,6 +88,8 @@ pub struct OidcConfig {
     pub client_id: OidcClientId,
     pub client_secret: Option<ClientSecret>,
     pub redirect_uri: HttpsRedirectUrl,
+    /// Optional PEM root certificate for a locally hosted HTTPS OIDC provider.
+    pub ca_certificate: Option<Vec<u8>>,
     pub scopes: Vec<Scope>,
     pub session_ttl: PositiveDuration,
     pub login_ttl: PositiveDuration,
@@ -103,6 +105,7 @@ impl OidcConfig {
             issuer: HttpsIssuerUrl::new(issuer)?,
             client_id: OidcClientId::new(client_id)?,
             redirect_uri: HttpsRedirectUrl::new(redirect_uri)?,
+            ca_certificate: None,
             client_secret: None,
             scopes: vec![Scope::new("email".into()), Scope::new("profile".into())],
             session_ttl: PositiveDuration(Duration::from_secs(3600)),

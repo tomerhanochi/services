@@ -53,10 +53,16 @@ struct Inner {
 impl OidcClient {
     #[hotpath::measure(impl_type = "OidcClient", future = true)]
     pub async fn discover(config: OidcConfig, sessions: Sessions) -> Result<Self, OidcError> {
-        let http = reqwest::Client::builder()
+        let mut builder = reqwest::Client::builder()
             .https_only(true)
             .redirect(reqwest::redirect::Policy::none())
-            .timeout(Duration::from_secs(30))
+            .timeout(Duration::from_secs(30));
+        if let Some(pem) = &config.ca_certificate {
+            let certificate = reqwest::Certificate::from_pem(pem)
+                .map_err(|error| OidcError::Provider(Box::new(error)))?;
+            builder = builder.add_root_certificate(certificate);
+        }
+        let http = builder
             .build()
             .map_err(|error| OidcError::Provider(Box::new(error)))?;
         let metadata = CoreProviderMetadata::discover_async(config.issuer.inner().clone(), &http)
