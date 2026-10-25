@@ -1,3 +1,4 @@
+use crate::Unset;
 use htmlb::prelude::*;
 use htmlb::{AttrValue, Component, RunTimeHtmlSizeHint};
 
@@ -8,13 +9,10 @@ const TEXT_FIELD_LABEL: &str = "md-text-field__label";
 const TEXT_FIELD_SUPPORTING: &str = "md-text-field__supporting";
 
 /// An outlined text field whose label floats above the value.
-pub fn text_field<L: IntoHtml, N: AttrValue>(
-    label: L,
-    name: N,
-) -> TextField<L, N, &'static str, ()> {
+pub fn text_field() -> TextField<Unset, Unset, &'static str, ()> {
     TextField {
-        label,
-        name,
+        label: Unset,
+        name: None,
         value: None,
         supporting: None,
         error: false,
@@ -26,7 +24,7 @@ pub fn text_field<L: IntoHtml, N: AttrValue>(
 
 pub struct TextField<L, N, V, S> {
     label: L,
-    name: N,
+    name: Option<N>,
     value: Option<V>,
     supporting: Option<S>,
     error: bool,
@@ -36,6 +34,32 @@ pub struct TextField<L, N, V, S> {
 }
 
 impl<L, N, V, S> TextField<L, N, V, S> {
+    pub fn label<L2: IntoHtml>(self, label: L2) -> TextField<L2, N, V, S> {
+        TextField {
+            label,
+            name: self.name,
+            value: self.value,
+            supporting: self.supporting,
+            error: self.error,
+            required: self.required,
+            autofocus: self.autofocus,
+            verbatim: self.verbatim,
+        }
+    }
+
+    pub fn name<N2: AttrValue>(self, name: N2) -> TextField<L, N2, V, S> {
+        TextField {
+            label: self.label,
+            name: Some(name),
+            value: self.value,
+            supporting: self.supporting,
+            error: self.error,
+            required: self.required,
+            autofocus: self.autofocus,
+            verbatim: self.verbatim,
+        }
+    }
+
     pub fn value<V2: AttrValue>(self, value: V2) -> TextField<L, N, V2, S> {
         let TextField {
             label,

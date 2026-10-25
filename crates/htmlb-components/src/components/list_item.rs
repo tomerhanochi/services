@@ -1,6 +1,7 @@
 use htmlb::prelude::*;
 use htmlb::{Component, RunTimeHtmlSizeHint};
 
+use crate::Unset;
 use crate::action::{Action, Actionable, Inert};
 const LIST_ITEM: &str = "md-list-item";
 const LIST_ITEM_MAIN: &str = "md-list-item__main";
@@ -13,9 +14,9 @@ const LIST_ITEM_TRAILING: &str = "md-list-item__trailing";
 
 /// One row of a [`list`](crate::list). With an action, the whole row (except [`trailing`](Self::trailing))
 /// is the target, which is what a thumb expects on a phone.
-pub fn list_item<H: IntoHtml>(headline: H) -> ListItem<H, (), (), (), (), Inert> {
+pub fn list_item() -> ListItem<Unset, (), (), (), (), Inert> {
     ListItem {
-        headline,
+        headline: Unset,
         leading: None,
         supporting: None,
         trailing_text: None,
@@ -34,6 +35,26 @@ pub struct ListItem<H, L, S, T, X, A> {
 }
 
 impl<H, L, S, T, X, A> ListItem<H, L, S, T, X, A> {
+    /// The primary text in the row.
+    pub fn headline<H2: IntoHtml>(self, headline: H2) -> ListItem<H2, L, S, T, X, A> {
+        let ListItem {
+            leading,
+            supporting,
+            trailing_text,
+            trailing,
+            action,
+            ..
+        } = self;
+        ListItem {
+            headline,
+            leading,
+            supporting,
+            trailing_text,
+            trailing,
+            action,
+        }
+    }
+
     /// Before the text: usually an [`Icon`](crate::icon::Icon).
     pub fn leading<L2: IntoHtml>(self, leading: L2) -> ListItem<H, L2, S, T, X, A> {
         let ListItem {

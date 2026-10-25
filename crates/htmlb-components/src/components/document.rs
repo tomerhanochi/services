@@ -1,11 +1,15 @@
+use crate::Unset;
 use htmlb::prelude::*;
 use htmlb::{Component, RunTimeHtmlSizeHint, color_scheme, viewport};
 
 /// A whole page: the doctype, `<html lang="en">`, and a `<head>` that already declares the
 /// charset, viewport and color schemes. Give it the rest of the [`head`](Document::head)
 /// (title, stylesheets, ...) and a [`body`](Document::body).
-pub fn document() -> Document<(), ()> {
-    Document { head: (), body: () }
+pub fn document() -> Document<(), Unset> {
+    Document {
+        head: (),
+        body: Unset,
+    }
 }
 
 pub struct Document<H, B> {

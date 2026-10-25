@@ -44,7 +44,8 @@ pub fn entry_row<'a>(at: &'a Location, entry: &'a Entry, can: Capabilities) -> i
         .child(&entry.name)
         .directory(is_dir);
     let name = entry.name.as_str();
-    let item = list_item(name)
+    let item = list_item()
+        .headline(name)
         .leading(if is_dir { Icons::Folder } else { Icons::Draft })
         .supporting(Details(entry.metadata))
         .action(match is_dir {
@@ -54,7 +55,9 @@ pub fn entry_row<'a>(at: &'a Location, entry: &'a Entry, can: Capabilities) -> i
     // A link to the actions page, not a menu in the row: a listing would otherwise
     // repeat the same menu once per entry, about half of its bytes.
     let actions = (can.rename || can.moves).then(|| {
-        icon_button(Icons::MoreVert, ("Actions for ", name))
+        icon_button()
+            .icon(Icons::MoreVert)
+            .label(("Actions for ", name))
             .href(Href::new(Route::Actions, at).child(&entry.name))
     });
     match actions {
@@ -67,18 +70,21 @@ pub fn entry_row<'a>(at: &'a Location, entry: &'a Entry, can: Capabilities) -> i
 pub fn entry_actions(at: &Location, kind: EntryKind, can: Capabilities) -> impl IntoHtml {
     (
         (kind == EntryKind::File && can.download).then(|| {
-            list_item("Download")
+            list_item()
+                .headline("Download")
                 .leading(Icons::Download)
                 .download(Href::new(Route::Browse, at))
         }),
         can.rename.then(|| {
-            list_item("Rename")
+            list_item()
+                .headline("Rename")
                 .leading(Icons::Edit)
                 .href(Href::new(Route::Rename, at))
         }),
         // Without `?to=`, the picker starts in the entry's own folder.
         can.moves.then(|| {
-            list_item("Move")
+            list_item()
+                .headline("Move")
                 .leading(Icons::DriveFileMove)
                 .href(Href::new(Route::Move, at))
         }),

@@ -1,3 +1,4 @@
+use crate::Unset;
 use htmlb::prelude::*;
 use htmlb::{Component, RunTimeHtmlSizeHint};
 
@@ -5,10 +6,10 @@ const SCAFFOLD: &str = "md-scaffold";
 const SCAFFOLD_BODY: &str = "md-scaffold__body";
 
 /// A screen: a top app bar, the body, and optionally a bottom app bar and a snackbar.
-pub fn scaffold<T: IntoHtml, B: IntoHtml>(top_app_bar: T, body: B) -> Scaffold<T, B, (), ()> {
+pub fn scaffold() -> Scaffold<Unset, Unset, (), ()> {
     Scaffold {
-        top_app_bar,
-        body,
+        top_app_bar: Unset,
+        body: Unset,
         bottom_app_bar: None,
         snackbar: None,
     }
@@ -22,6 +23,24 @@ pub struct Scaffold<T, B, F, S> {
 }
 
 impl<T, B, F, S> Scaffold<T, B, F, S> {
+    pub fn top_app_bar<T2: IntoHtml>(self, top_app_bar: T2) -> Scaffold<T2, B, F, S> {
+        Scaffold {
+            top_app_bar,
+            body: self.body,
+            bottom_app_bar: self.bottom_app_bar,
+            snackbar: self.snackbar,
+        }
+    }
+
+    pub fn body<B2: IntoHtml>(self, body: B2) -> Scaffold<T, B2, F, S> {
+        Scaffold {
+            top_app_bar: self.top_app_bar,
+            body,
+            bottom_app_bar: self.bottom_app_bar,
+            snackbar: self.snackbar,
+        }
+    }
+
     /// See [`bottom_app_bar`](crate::bottom_app_bar).
     pub fn bottom_app_bar<F2: IntoHtml>(self, bar: F2) -> Scaffold<T, B, F2, S> {
         Scaffold {
@@ -49,7 +68,8 @@ impl<T: IntoHtml, B: IntoHtml, F: IntoHtml, S: IntoHtml> Component for Scaffold<
             self.top_app_bar,
             main().class(SCAFFOLD_BODY).child(self.body),
             self.bottom_app_bar,
-            self.snackbar.map(super::snackbar),
+            self.snackbar
+                .map(|message| super::snackbar().message(message)),
         ))
     }
 }

@@ -1,24 +1,43 @@
 use htmlb::prelude::*;
 use htmlb::{AttrValue, Component, RunTimeHtmlSizeHint};
 
+use crate::Unset;
 use crate::action::{Action, Actionable, Inert};
 use crate::icon::Icon;
 
 const ICON_BUTTON: &str = "md-icon-button";
 
 /// An icon-only button. `label` is required: it's the accessible name and tooltip.
-pub fn icon_button<I: Icon, L: AttrValue + Clone>(icon: I, label: L) -> IconButton<I, L, Inert> {
+pub fn icon_button() -> IconButton<Unset, Unset, Inert> {
     IconButton {
-        icon,
-        label,
+        icon: None,
+        label: None,
         action: Inert,
     }
 }
 
 pub struct IconButton<I, L, A> {
-    icon: I,
-    label: L,
+    icon: Option<I>,
+    label: Option<L>,
     action: A,
+}
+
+impl<I, L, A> IconButton<I, L, A> {
+    pub fn icon<I2: Icon>(self, icon: I2) -> IconButton<I2, L, A> {
+        IconButton {
+            icon: Some(icon),
+            label: self.label,
+            action: self.action,
+        }
+    }
+
+    pub fn label<L2: AttrValue + Clone>(self, label: L2) -> IconButton<I, L2, A> {
+        IconButton {
+            icon: self.icon,
+            label: Some(label),
+            action: self.action,
+        }
+    }
 }
 
 impl<I, L> Actionable for IconButton<I, L, Inert> {
@@ -35,8 +54,7 @@ impl<I, L> Actionable for IconButton<I, L, Inert> {
 
 impl<I: Icon, L: AttrValue + Clone, A: Action> Component for IconButton<I, L, A> {
     fn render(self) -> impl IntoHtml {
-        self.action
-            .element(ICON_BUTTON, Some(self.label), self.icon)
+        self.action.element(ICON_BUTTON, self.label, self.icon)
     }
 }
 impl<I: Icon, L: AttrValue + Clone, A: Action> RunTimeHtmlSizeHint for IconButton<I, L, A> {

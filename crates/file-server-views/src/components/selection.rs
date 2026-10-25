@@ -13,8 +13,9 @@ const SELECTION: &str = "selection";
 /// An entry with a checkbox: the whole row toggles it.
 pub fn selectable_row(entry: &Entry) -> impl IntoHtml {
     let name = entry.name.as_str();
-    list_item(name)
-        .leading(checkbox("item", name).form(SELECTION))
+    list_item()
+        .headline(name)
+        .leading(checkbox().name("item").value(name).form(SELECTION))
         .supporting(Details(entry.metadata))
         .label()
 }
@@ -22,13 +23,14 @@ pub fn selectable_row(entry: &Entry) -> impl IntoHtml {
 /// The bar moving the [`selectable_row`]s checked in `at`, shown once one is.
 pub fn selection_bar(at: &Location) -> impl IntoHtml {
     // A GET form: the picker keeps the selection in its URL as the user browses.
-    htmlb_components::selection_bar(
+    htmlb_components::selection_bar().child(
         form()
             .id(SELECTION)
             .method(FormMethod::Get)
             .action(Href::new(Route::MoveMany, at))
             .child(
-                filled_button("Move selected")
+                filled_button()
+                    .label("Move selected")
                     .icon(Icons::DriveFileMove)
                     .submit(),
             ),

@@ -1,24 +1,43 @@
 use htmlb::prelude::*;
 use htmlb::{Component, RunTimeHtmlSizeHint};
 
+use crate::Unset;
 use crate::action::{Action, Actionable, Inert};
 use crate::icon::Icon;
 
 const MENU_ITEM: &str = "md-menu-item";
 
 /// A row in a [`sheet`](crate::sheet) or menu: an icon and a label, with an action.
-pub fn menu_item<I: Icon, L: IntoHtml>(icon: I, label: L) -> MenuItem<I, L, Inert> {
+pub fn menu_item() -> MenuItem<Unset, Unset, Inert> {
     MenuItem {
-        icon,
-        label,
+        icon: None,
+        label: Unset,
         action: Inert,
     }
 }
 
 pub struct MenuItem<I, L, A> {
-    icon: I,
+    icon: Option<I>,
     label: L,
     action: A,
+}
+
+impl<I, L, A> MenuItem<I, L, A> {
+    pub fn icon<I2: Icon>(self, icon: I2) -> MenuItem<I2, L, A> {
+        MenuItem {
+            icon: Some(icon),
+            label: self.label,
+            action: self.action,
+        }
+    }
+
+    pub fn label<L2: IntoHtml>(self, label: L2) -> MenuItem<I, L2, A> {
+        MenuItem {
+            icon: self.icon,
+            label,
+            action: self.action,
+        }
+    }
 }
 
 impl<I, L> Actionable for MenuItem<I, L, Inert> {

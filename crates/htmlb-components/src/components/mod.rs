@@ -1,5 +1,5 @@
-//! The components. Each is a builder: a constructor taking what's required, then methods
-//! for what's optional. Optional slots are `Option<T>`, with `T = ()` until set.
+//! The components. Each starts with an empty builder and is configured through chained
+//! setters. Optional slots are `Option<T>`; required slots begin as [`crate::Unset`].
 
 mod bottom_app_bar;
 mod button;

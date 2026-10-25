@@ -1,3 +1,4 @@
+use crate::Unset;
 use htmlb::prelude::*;
 use htmlb::{Component, RunTimeHtmlSizeHint};
 
@@ -9,9 +10,9 @@ const TOP_APP_BAR_SUBTITLE: &str = "md-top-app-bar__subtitle";
 const TOP_APP_BAR_ACTIONS: &str = "md-top-app-bar__actions";
 
 /// The bar at the top of a screen: navigation, a headline, and actions.
-pub fn top_app_bar<H: IntoHtml>(headline: H) -> TopAppBar<H, (), (), ()> {
+pub fn top_app_bar() -> TopAppBar<Unset, (), (), ()> {
     TopAppBar {
-        headline,
+        headline: Unset,
         navigation: None,
         subtitle: None,
         actions: None,
@@ -26,6 +27,15 @@ pub struct TopAppBar<H, N, S, A> {
 }
 
 impl<H, N, S, A> TopAppBar<H, N, S, A> {
+    pub fn headline<H2: IntoHtml>(self, headline: H2) -> TopAppBar<H2, N, S, A> {
+        TopAppBar {
+            headline,
+            navigation: self.navigation,
+            subtitle: self.subtitle,
+            actions: self.actions,
+        }
+    }
+
     /// Usually an [`icon_button`](crate::icon_button) going back or up.
     pub fn navigation<N2: IntoHtml>(self, navigation: N2) -> TopAppBar<H, N2, S, A> {
         TopAppBar {

@@ -15,7 +15,8 @@ pub fn move_picker<'a>(
     folders: &'a [Entry],
     error: Option<&str>,
 ) -> impl IntoHtml {
-    let bar = top_app_bar(moving.title())
+    let bar = top_app_bar()
+        .headline(moving.title())
         .navigation(close_button("Cancel", moving.back()))
         .subtitle(("To ", Breadcrumb(browsing)));
 
@@ -27,9 +28,12 @@ pub fn move_picker<'a>(
         .map(move |f| picker_folder_row(moving, browsing, &f.name));
     let body = (
         error.map(error_message),
-        list((picker_up_row(moving, browsing), rows.into_html_cloned())),
+        list().items((picker_up_row(moving, browsing), rows.into_html_cloned())),
     );
-    page()
-        .title(moving.title())
-        .content(scaffold(bar, body).bottom_app_bar(bottom_app_bar(move_here(moving, browsing))))
+    page().title(moving.title()).content(
+        scaffold()
+            .top_app_bar(bar)
+            .body(body)
+            .bottom_app_bar(bottom_app_bar().child(move_here(moving, browsing))),
+    )
 }

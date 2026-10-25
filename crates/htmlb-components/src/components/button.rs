@@ -1,6 +1,7 @@
 use htmlb::prelude::*;
 use htmlb::{Component, RunTimeHtmlSizeHint};
 
+use crate::Unset;
 use crate::action::{Action, Actionable, Inert};
 use crate::icon::Icon;
 
@@ -40,42 +41,42 @@ impl ButtonStyle {
 /// The highest-emphasis button: the screen's main action.
 ///
 /// Give it an action: [`href`](Actionable::href), [`submit`](Actionable::submit), ...
-pub fn filled_button<L: IntoHtml>(label: L) -> Button<L, (), Inert> {
-    new_button(ButtonStyle::Filled, label)
+pub fn filled_button() -> Button<Unset, (), Inert> {
+    new_button(ButtonStyle::Filled)
 }
 
 /// A secondary action that still stands out.
 ///
 /// Give it an action: [`href`](Actionable::href), [`submit`](Actionable::submit), ...
-pub fn tonal_button<L: IntoHtml>(label: L) -> Button<L, (), Inert> {
-    new_button(ButtonStyle::Tonal, label)
+pub fn tonal_button() -> Button<Unset, (), Inert> {
+    new_button(ButtonStyle::Tonal)
 }
 
 /// A filled-tonal button lifted off a patterned background.
 ///
 /// Give it an action: [`href`](Actionable::href), [`submit`](Actionable::submit), ...
-pub fn elevated_button<L: IntoHtml>(label: L) -> Button<L, (), Inert> {
-    new_button(ButtonStyle::Elevated, label)
+pub fn elevated_button() -> Button<Unset, (), Inert> {
+    new_button(ButtonStyle::Elevated)
 }
 
 /// A medium-emphasis action, e.g. "Cancel" next to a filled "Save".
 ///
 /// Give it an action: [`href`](Actionable::href), [`submit`](Actionable::submit), ...
-pub fn outlined_button<L: IntoHtml>(label: L) -> Button<L, (), Inert> {
-    new_button(ButtonStyle::Outlined, label)
+pub fn outlined_button() -> Button<Unset, (), Inert> {
+    new_button(ButtonStyle::Outlined)
 }
 
 /// The lowest emphasis: dialog actions, inline links.
 ///
 /// Give it an action: [`href`](Actionable::href), [`submit`](Actionable::submit), ...
-pub fn text_button<L: IntoHtml>(label: L) -> Button<L, (), Inert> {
-    new_button(ButtonStyle::Text, label)
+pub fn text_button() -> Button<Unset, (), Inert> {
+    new_button(ButtonStyle::Text)
 }
 
-fn new_button<L: IntoHtml>(style: ButtonStyle, label: L) -> Button<L, (), Inert> {
+fn new_button(style: ButtonStyle) -> Button<Unset, (), Inert> {
     Button {
         style,
-        label,
+        label: Unset,
         icon: None,
         action: Inert,
     }
@@ -89,6 +90,22 @@ pub struct Button<L, I, A> {
 }
 
 impl<L, I, A> Button<L, I, A> {
+    /// The button's visible label.
+    pub fn label<L2: IntoHtml>(self, label: L2) -> Button<L2, I, A> {
+        let Button {
+            style,
+            icon,
+            action,
+            ..
+        } = self;
+        Button {
+            style,
+            label,
+            icon,
+            action,
+        }
+    }
+
     /// An icon before the label.
     pub fn icon<I2: Icon>(self, icon: I2) -> Button<L, I2, A> {
         Button {

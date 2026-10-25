@@ -34,10 +34,10 @@ impl Done {
 
 /// In place of a list with nothing in it, or of a page that couldn't be shown.
 pub fn empty(message: &str) -> impl IntoHtml {
-    pane(supporting_text(message))
+    pane().child(supporting_text().child(message))
 }
 
 /// Why a form's submission failed, above the form.
 pub fn error_message(message: &str) -> impl IntoHtml {
-    pane(p().class("md-color-error").child(message))
+    pane().child(p().class("md-color-error").child(message))
 }

@@ -1,5 +1,6 @@
 use htmlb::prelude::*;
 use htmlb::{Component, RunTimeHtmlSizeHint, favicon, stylesheet};
+use htmlb_components::Unset;
 use htmlb_components::document;
 
 use crate::icons::Icons;
@@ -7,10 +8,10 @@ use crate::urls::Asset;
 
 /// A whole page: its [`content`](Page::content) under the head every page shares, with its
 /// [`title`](Page::title) before the site's name.
-pub fn page() -> Page<(), ()> {
+pub fn page() -> Page<Unset, Unset> {
     Page {
-        title: (),
-        content: (),
+        title: Unset,
+        content: Unset,
     }
 }
 

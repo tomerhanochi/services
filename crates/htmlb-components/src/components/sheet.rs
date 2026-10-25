@@ -1,3 +1,4 @@
+use crate::Unset;
 use htmlb::prelude::*;
 use htmlb::{AttrValue, Component, RunTimeHtmlSizeHint};
 
@@ -8,21 +9,37 @@ const SHEET_HEADLINE: &str = "md-sheet__headline";
 /// A bottom sheet: a popover sliding up from the bottom edge on phones, centered on wider
 /// screens. Open it with an action's [`opens`](crate::Actionable::opens) and the same `id`.
 /// Tapping outside or pressing Escape closes it, without JavaScript.
-pub fn sheet<I: AttrValue, H: IntoHtml>(id: I, headline: H) -> Sheet<I, H, ()> {
+pub fn sheet() -> Sheet<Unset, Unset, ()> {
     Sheet {
-        id,
-        headline,
+        id: None,
+        headline: Unset,
         content: (),
     }
 }
 
 pub struct Sheet<I, H, C> {
-    id: I,
+    id: Option<I>,
     headline: H,
     content: C,
 }
 
 impl<I, H, C> Sheet<I, H, C> {
+    pub fn id<I2: AttrValue>(self, id: I2) -> Sheet<I2, H, C> {
+        Sheet {
+            id: Some(id),
+            headline: self.headline,
+            content: self.content,
+        }
+    }
+
+    pub fn headline<H2: IntoHtml>(self, headline: H2) -> Sheet<I, H2, C> {
+        Sheet {
+            id: self.id,
+            headline,
+            content: self.content,
+        }
+    }
+
     pub fn child<N: IntoHtml>(self, child: N) -> Sheet<I, H, (C, N)> {
         Sheet {
             id: self.id,

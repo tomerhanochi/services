@@ -8,6 +8,9 @@ pub mod css;
 pub mod icon;
 mod theme;
 pub mod typography;
+mod unset;
+
+pub use unset::Unset;
 
 pub use action::{Action, Actionable};
 pub use color::{Color, ColorRole, Scheme};
@@ -17,5 +20,5 @@ pub use typography::{Typeface, Typefaces};
 
 pub mod prelude {
     pub use crate::components::*;
-    pub use crate::{Actionable, ColorRole, Theme, icon};
+    pub use crate::{Actionable, ColorRole, Theme, Unset, icon};
 }

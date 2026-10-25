@@ -17,7 +17,8 @@ pub fn directory<'a>(
     done: Option<Done>,
 ) -> impl IntoHtml {
     let page_title = location_title(at);
-    let bar = top_app_bar(page_title)
+    let bar = top_app_bar()
+        .headline(page_title)
         .navigation(up_button(at))
         .subtitle(Ancestors(at))
         .actions((
@@ -28,9 +29,12 @@ pub fn directory<'a>(
     let rows = entries.iter().map(move |entry| entry_row(at, entry, can));
     let body = match entries.is_empty() {
         true => Either::Left(empty("This folder is empty.")),
-        false => Either::Right(list(rows.into_html_cloned())),
+        false => Either::Right(list().items(rows.into_html_cloned())),
     };
-    page()
-        .title(page_title)
-        .content(scaffold(bar, body).snackbar(done.map(Done::message)))
+    page().title(page_title).content(
+        scaffold()
+            .top_app_bar(bar)
+            .body(body)
+            .snackbar(done.map(Done::message)),
+    )
 }

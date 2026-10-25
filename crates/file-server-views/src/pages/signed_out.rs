@@ -9,13 +9,16 @@ use crate::urls::LoginHref;
 #[hotpath::measure]
 pub fn signed_out(next: &str) -> impl IntoHtml {
     let body = (
-        headline("Your files, on your server"),
-        supporting_text("Sign in to browse, download, rename and move them."),
-        filled_button("Sign in")
+        headline().child("Your files, on your server"),
+        supporting_text().child("Sign in to browse, download, rename and move them."),
+        filled_button()
+            .label("Sign in")
             .icon(Icons::Login)
             .href(LoginHref(next)),
     );
-    page()
-        .title("Sign in")
-        .content(scaffold(top_app_bar("Files"), pane(body)))
+    page().title("Sign in").content(
+        scaffold()
+            .top_app_bar(top_app_bar().headline("Files"))
+            .body(pane().child(body)),
+    )
 }

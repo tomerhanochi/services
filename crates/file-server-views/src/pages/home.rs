@@ -12,9 +12,11 @@ pub fn home(user: Option<&str>, mounts: &[MountName]) -> impl IntoHtml {
         true => Either::Left(empty(
             "No folders are shared with you yet. Ask the server's administrator to give one of your roles access.",
         )),
-        false => Either::Right(list(mounts.iter().map(mount_row).into_html_cloned())),
+        false => Either::Right(list().items(mounts.iter().map(mount_row).into_html_cloned())),
     };
-    page()
-        .title("Home")
-        .content(scaffold(top_app_bar("Files").actions(sign_out(user)), body))
+    page().title("Home").content(
+        scaffold()
+            .top_app_bar(top_app_bar().headline("Files").actions(sign_out(user)))
+            .body(body),
+    )
 }

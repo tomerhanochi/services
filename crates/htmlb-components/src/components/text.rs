@@ -1,38 +1,84 @@
-use htmlb::{IntoHtml, h1, h2, h3, p, span};
+use crate::Unset;
+use htmlb::prelude::*;
+use htmlb::{Component, RunTimeHtmlSizeHint};
 
-/// The primary page heading: an `<h1>` using Material's display-large style.
-pub fn display<C: IntoHtml>(content: C) -> impl IntoHtml {
-    h1().class("md-type-display-large").child(content)
+macro_rules! text_component {
+    ($name:ident, $constructor:ident, $tag:ident, $class:literal, $description:literal) => {
+        #[doc = $description]
+        pub fn $constructor() -> $name<Unset> {
+            $name { content: Unset }
+        }
+
+        pub struct $name<C> {
+            content: C,
+        }
+
+        impl<C> $name<C> {
+            pub fn child<N: IntoHtml>(self, child: N) -> $name<N> {
+                $name { content: child }
+            }
+        }
+
+        impl<C: IntoHtml> Component for $name<C> {
+            fn render(self) -> impl IntoHtml {
+                $tag().class($class).child(self.content)
+            }
+        }
+
+        impl<C: IntoHtml> RunTimeHtmlSizeHint for $name<C> {
+            fn size_hint(&self) -> usize {
+                $class.len() + self.content.size_hint()
+            }
+        }
+    };
 }
 
-/// A section heading: an `<h2>` using Material's headline-large style.
-pub fn headline<C: IntoHtml>(content: C) -> impl IntoHtml {
-    h2().class("md-type-headline-large").child(content)
-}
-
-/// A subsection heading: an `<h3>` using Material's title-large style.
-pub fn title<C: IntoHtml>(content: C) -> impl IntoHtml {
-    h3().class("md-type-title-large").child(content)
-}
-
-/// A supporting line below a heading, styled as body-medium secondary text.
-pub fn subtitle<C: IntoHtml>(content: C) -> impl IntoHtml {
-    p().class(("md-type-body-medium", "md-color-on-surface-variant"))
-        .child(content)
-}
-
-/// A prose paragraph using Material's body-large style.
-pub fn paragraph<C: IntoHtml>(content: C) -> impl IntoHtml {
-    p().class("md-type-body-large").child(content)
-}
-
-/// Secondary explanatory text using body-small and the on-surface-variant color.
-pub fn supporting_text<C: IntoHtml>(content: C) -> impl IntoHtml {
-    p().class(("md-type-body-small", "md-color-on-surface-variant"))
-        .child(content)
-}
-
-/// Concise label text using Material's label-large style.
-pub fn label<C: IntoHtml>(content: C) -> impl IntoHtml {
-    span().class("md-type-label-large").child(content)
-}
+text_component!(
+    DisplayText,
+    display,
+    h1,
+    "md-type-display-large",
+    "The primary page heading, using Material's display-large style."
+);
+text_component!(
+    HeadlineText,
+    headline,
+    h2,
+    "md-type-headline-large",
+    "A section heading using Material's headline-large style."
+);
+text_component!(
+    TitleText,
+    title,
+    h3,
+    "md-type-title-large",
+    "A subsection heading using Material's title-large style."
+);
+text_component!(
+    SubtitleText,
+    subtitle,
+    p,
+    "md-type-body-medium md-color-on-surface-variant",
+    "Supporting text below a heading, using body-medium and the on-surface-variant color."
+);
+text_component!(
+    ParagraphText,
+    paragraph,
+    p,
+    "md-type-body-large",
+    "Prose using Material's body-large style."
+);
+text_component!(
+    SupportingText,
+    supporting_text,
+    p,
+    "md-type-body-small md-color-on-surface-variant",
+    "Secondary explanatory text using body-small and the on-surface-variant color."
+);
+text_component!(
+    LabelText,
+    label,
+    span,
+    "md-type-label-large",
+    "Concise label text using Material's label-large style."
+);

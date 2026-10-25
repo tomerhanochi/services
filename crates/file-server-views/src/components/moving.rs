@@ -54,7 +54,8 @@ impl<'a> Moving<'a> {
 /// The picker browsing the folder above `browsing`; none at a mount's root.
 pub fn picker_up_row(moving: Moving, browsing: &Location) -> impl IntoHtml {
     browsing.path.parent().map(|parent| {
-        list_item("Up one folder")
+        list_item()
+            .headline("Up one folder")
             .leading(Icons::ArrowUpward)
             .href(OwnedPicker(moving.href(), parent))
     })
@@ -66,7 +67,8 @@ pub fn picker_folder_row<'a>(
     browsing: &'a Location,
     folder: &'a EntryName,
 ) -> impl IntoHtml {
-    list_item(folder.as_str())
+    list_item()
+        .headline(folder.as_str())
         .leading(Icons::Folder)
         .trailing_text(Icons::ChevronRight)
         .href(PickerChild(moving.href().to(&browsing.path), folder))
@@ -82,7 +84,8 @@ pub fn move_here(moving: Moving, browsing: &Location) -> impl IntoHtml {
                 .r#type(InputType::Hidden)
                 .name("to")
                 .value(htmlb::display(&browsing.path)),
-            filled_button("Move here")
+            filled_button()
+                .label("Move here")
                 .icon(Icons::DriveFileMove)
                 .submit(),
         ))

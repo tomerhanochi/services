@@ -10,10 +10,13 @@ use crate::urls::ParentHref;
 #[hotpath::measure]
 pub fn actions(at: &Location, kind: EntryKind, can: Capabilities) -> impl IntoHtml {
     let name = location_title(at);
-    let bar = top_app_bar(name)
+    let bar = top_app_bar()
+        .headline(name)
         .navigation(close_button("Close", ParentHref::of(at)))
         .subtitle(Breadcrumb(at));
-    page()
-        .title(name)
-        .content(scaffold(bar, list(entry_actions(at, kind, can))))
+    page().title(name).content(
+        scaffold()
+            .top_app_bar(bar)
+            .body(list().items(entry_actions(at, kind, can))),
+    )
 }

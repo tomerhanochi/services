@@ -2,6 +2,7 @@ use htmlb::prelude::*;
 use htmlb::{Component, RunTimeHtmlSizeHint};
 
 use crate::ColorRole;
+use crate::Unset;
 
 const SURFACE: &str = "md-surface";
 
@@ -60,17 +61,27 @@ const fn role_class(role: ColorRole) -> &'static str {
 }
 
 /// A container filled with a color role; its text takes the matching content color.
-pub fn surface(role: ColorRole) -> Surface<()> {
-    Surface { role, content: () }
+pub fn surface() -> Surface<(), Unset> {
+    Surface {
+        role: Unset,
+        content: (),
+    }
 }
 
-pub struct Surface<C> {
-    role: ColorRole,
+pub struct Surface<C, R = Unset> {
+    role: R,
     content: C,
 }
 
-impl<C> Surface<C> {
-    pub fn child<N: IntoHtml>(self, child: N) -> Surface<(C, N)> {
+impl<C, R> Surface<C, R> {
+    pub fn role(self, role: ColorRole) -> Surface<C, ColorRole> {
+        Surface {
+            role,
+            content: self.content,
+        }
+    }
+
+    pub fn child<N: IntoHtml>(self, child: N) -> Surface<(C, N), R> {
         Surface {
             role: self.role,
             content: (self.content, child),
@@ -78,15 +89,15 @@ impl<C> Surface<C> {
     }
 }
 
-impl<C: IntoHtml> Component for Surface<C> {
+impl<C: IntoHtml> Component for Surface<C, ColorRole> {
     fn render(self) -> impl IntoHtml {
         div()
             .class((SURFACE, role_class(self.role)))
             .child(self.content)
     }
 }
-impl<C: IntoHtml> RunTimeHtmlSizeHint for Surface<C> {
+impl<C: IntoHtml> RunTimeHtmlSizeHint for Surface<C, ColorRole> {
     fn size_hint(&self) -> usize {
-        self.content.size_hint()
+        SURFACE.len() + role_class(self.role).len() + self.content.size_hint()
     }
 }

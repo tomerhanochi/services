@@ -64,7 +64,8 @@ fn path(mount: &str, components: &[EntryName]) -> impl IntoHtml {
 
 /// A mount on the home page, opening its root listing.
 pub fn mount_row(mount: &MountName) -> impl IntoHtml {
-    list_item(mount.as_str())
+    list_item()
+        .headline(mount.as_str())
         .leading(Icons::HardDrive)
         .href(MountHref(mount))
         .trailing_text(Icons::ChevronRight)
