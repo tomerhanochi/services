@@ -1,9 +1,10 @@
 # File Server Helm Chart
 
 This chart deploys the file-server container with a ConfigMap for non-secret
-settings, an optional ingress, and a persistent volume for mounted files.
-PostgreSQL and OAuth client credentials are read from pre-existing Kubernetes
-Secrets; the chart does not create or store credentials.
+settings and optional Ingress and Gateway API HTTPRoute resources. Each file
+mount uses a pre-existing PersistentVolumeClaim; the chart does not manage PVs
+or PVCs. PostgreSQL and OAuth client credentials come from pre-existing
+Kubernetes Secrets; the chart does not create or store credentials.
 
 ## Required secrets
 
@@ -21,36 +22,44 @@ kubectl create secret generic file-server-oauth \
   --from-literal=client-secret='OAUTH_CLIENT_SECRET'
 ```
 
-Keep these values out of Helm values files. Change the Secret names or keys with
-`secrets.postgres` and `secrets.oauth` when using different names.
+Keep credentials out of Helm values files. Set the references under
+`fileServer.postgresql.secretKeyRef` and `fileServer.oidc.secretKeyRef` to use
+different Secret names or keys.
 
 ## Configuration
 
-Set `fileServer.publicUrl`, `fileServer.oidc.issuer`, `fileServer.oidc.clientId`,
-and `fileServer.oidc.redirectUri` for the deployment. The redirect URI must be
-the public URL followed by `/auth/callback`. `fileServer.oidc.users` maps
-provider subjects to local file-server user IDs; `fileServer.roles`,
-`fileServer.users`, and `fileServer.machines` assign those principals access to
-mounts.
+Set `fileServer.publicUrl`, `fileServer.oidc.issuer`, and
+`fileServer.oidc.clientId` for the deployment. The chart derives the OAuth
+redirect URI from `publicUrl` by appending `/auth/callback`, which is the
+file-server's fixed callback route. Register that resulting URI with the OAuth
+provider. `fileServer.oidc.users` maps provider subjects to local file-server
+user IDs; `fileServer.roles`, `fileServer.users`, and `fileServer.machines`
+assign those principals access to mounts.
 
-Mounts are configured in `fileServer.mounts` and should use paths under `/data`,
-which is backed by the chart's PVC by default. Use `persistence.existingClaim` to
-reuse a claim, or set `persistence.enabled=false` for ephemeral storage.
+Configure each mount with a file-server `name` and an existing
+`persistentVolumeClaimName`. The chart mounts that claim at `/data/<name>` and
+sets the corresponding file-server mount path automatically.
 
 Example values:
 
 ```yaml
 fileServer:
   publicUrl: https://files.example.com
+  postgresql:
+    secretKeyRef:
+      name: file-server-postgres
+      key: url
   oidc:
     issuer: https://identity.example.com
     clientId: file-server
-    redirectUri: https://files.example.com/auth/callback
+    secretKeyRef:
+      name: file-server-oauth
+      key: client-secret
     users:
       "provider-subject": alice
   mounts:
     - name: documents
-      path: /data/documents
+      persistentVolumeClaimName: documents-pvc
   roles:
     editors:
       documents: editor
@@ -58,6 +67,22 @@ fileServer:
     alice:
       - editors
 ```
+
+An optional Gateway API route can be enabled with values like:
+
+```yaml
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: public-gateway
+      namespace: gateway-system
+  hostnames:
+    - files.example.com
+```
+
+The cluster must have the Gateway API `HTTPRoute` CRD and a compatible Gateway
+controller installed. Ingress and HTTPRoute can be enabled independently or
+together.
 
 ## Install
 
@@ -70,9 +95,8 @@ helm install files oci://ghcr.io/OWNER/services/charts/file-server \
   --namespace files --create-namespace \
   --set fileServer.publicUrl=https://files.example.com \
   --set fileServer.oidc.issuer=https://identity.example.com \
-  --set fileServer.oidc.clientId=file-server \
-  --set fileServer.oidc.redirectUri=https://files.example.com/auth/callback
+  --set fileServer.oidc.clientId=file-server
 ```
 
-Configure ingress TLS for the public origin. The chart's container listens on
-`0.0.0.0:8080` and the Service exposes port 8080.
+Configure ingress or Gateway TLS for the public origin. The chart's container
+listens on `0.0.0.0:8080` and the Service exposes port 8080.

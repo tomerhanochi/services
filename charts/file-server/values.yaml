@@ -43,15 +43,31 @@ ingress:
           pathType: Prefix
   tls: []
 
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs: []
+  hostnames: []
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
 fileServer:
   listen: 0.0.0.0:8080
   publicUrl: https://files.example.com
-  database:
+  postgresql:
     maxConnections: 10
+    secretKeyRef:
+      name: file-server-postgres
+      key: url
   oidc:
     issuer: https://identity.example.com
     clientId: file-server
-    redirectUri: https://files.example.com/auth/callback
+    secretKeyRef:
+      name: file-server-oauth
+      key: client-secret
     scopes:
       - email
       - profile
@@ -63,30 +79,12 @@ fileServer:
     users: {}
   mounts:
     - name: documents
-      path: /data/documents
+      persistentVolumeClaimName: file-server-documents
   # Each role maps mount names to viewer or editor.
   roles: {}
   # Local user and machine IDs map to role names.
   users: {}
   machines: {}
-
-# These Secrets must be created separately. Credentials are never chart values.
-secrets:
-  postgres:
-    name: file-server-postgres
-    key: url
-  oauth:
-    name: file-server-oauth
-    key: client-secret
-
-persistence:
-  enabled: true
-  existingClaim: ""
-  accessModes:
-    - ReadWriteOnce
-  size: 10Gi
-  storageClassName: ""
-  annotations: {}
 
 resources: {}
 nodeSelector: {}

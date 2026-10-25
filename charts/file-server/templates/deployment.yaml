@@ -52,13 +52,13 @@ spec:
             - name: FILE_SERVER_DATABASE__URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ required "secrets.postgres.name must name an existing Kubernetes Secret" .Values.secrets.postgres.name | quote }}
-                  key: {{ .Values.secrets.postgres.key | quote }}
+                  name: {{ required "fileServer.postgresql.secretKeyRef.name must name an existing Kubernetes Secret" .Values.fileServer.postgresql.secretKeyRef.name | quote }}
+                  key: {{ .Values.fileServer.postgresql.secretKeyRef.key | quote }}
             - name: FILE_SERVER_AUTH__OIDC__CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ required "secrets.oauth.name must name an existing Kubernetes Secret" .Values.secrets.oauth.name | quote }}
-                  key: {{ .Values.secrets.oauth.key | quote }}
+                  name: {{ required "fileServer.oidc.secretKeyRef.name must name an existing Kubernetes Secret" .Values.fileServer.oidc.secretKeyRef.name | quote }}
+                  key: {{ .Values.fileServer.oidc.secretKeyRef.key | quote }}
           ports:
             - name: http
               containerPort: 8080
@@ -85,16 +85,16 @@ spec:
             - name: config
               mountPath: /etc/file-server
               readOnly: true
-            - name: data
-              mountPath: /data
+            {{- range $index, $mount := .Values.fileServer.mounts }}
+            - name: mount-{{ $index }}
+              mountPath: /data/{{ $mount.name }}
+            {{- end }}
       volumes:
         - name: config
           configMap:
             name: {{ include "file-server.fullname" . }}-config
-        - name: data
-          {{- if .Values.persistence.enabled }}
+        {{- range $index, $mount := .Values.fileServer.mounts }}
+        - name: mount-{{ $index }}
           persistentVolumeClaim:
-            claimName: {{ default (include "file-server.fullname" .) .Values.persistence.existingClaim }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
+            claimName: {{ required (printf "fileServer.mounts[%d].persistentVolumeClaimName must name an existing PVC" $index) $mount.persistentVolumeClaimName | quote }}
+        {{- end }}

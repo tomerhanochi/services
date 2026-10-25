@@ -10,12 +10,12 @@ data:
     public_url = {{ .Values.fileServer.publicUrl | quote }}
 
     [database]
-    max_connections = {{ .Values.fileServer.database.maxConnections }}
+    max_connections = {{ .Values.fileServer.postgresql.maxConnections }}
 
     [auth.oidc]
     issuer = {{ .Values.fileServer.oidc.issuer | quote }}
     client_id = {{ .Values.fileServer.oidc.clientId | quote }}
-    redirect_uri = {{ .Values.fileServer.oidc.redirectUri | quote }}
+    redirect_uri = {{ printf "%s/auth/callback" (trimSuffix "/" .Values.fileServer.publicUrl) | quote }}
     scopes = {{ .Values.fileServer.oidc.scopes | toJson }}
     session_ttl_secs = {{ .Values.fileServer.oidc.sessionTtlSecs }}
     login_ttl_secs = {{ .Values.fileServer.oidc.loginTtlSecs }}
@@ -32,7 +32,7 @@ data:
     {{- range .Values.fileServer.mounts }}
     [[mounts]]
     name = {{ .name | quote }}
-    path = {{ .path | quote }}
+    path = {{ printf "/data/%s" .name | quote }}
     {{- end }}
 
     {{- range $role, $grants := .Values.fileServer.roles }}
