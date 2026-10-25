@@ -1,23 +1,41 @@
 repos:
+  - repo: builtin
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-case-conflict
+      - id: check-illegal-windows-names
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: detect-private-key
   - repo: local
     hooks:
       - id: justfile-fmt
         name: just --fmt
         entry: just --fmt
         language: system
+        files: '(^|/)(justfile|[^/]+\.just)$'
         pass_filenames: false
       - id: crates-fmt-check
         name: just fmt-check
         entry: just fmt-check
         language: system
+        files: '(^|/)([^/]+\.rs|Cargo\.toml|Cargo\.lock)$'
         pass_filenames: false
       - id: crates-check
         name: just check
         entry: just check
         language: system
+        files: '(^|/)([^/]+\.rs|Cargo\.toml|Cargo\.lock)$'
         pass_filenames: false
       - id: charts-lint
         name: just charts lint
         entry: just charts lint
         language: system
+        files: '^charts/'
         pass_filenames: false
