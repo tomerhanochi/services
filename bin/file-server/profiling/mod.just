@@ -13,7 +13,7 @@ measure-release output="/tmp/file-server-measurement" samples="30" port="15435":
     "${compose[@]}" up --detach --wait
     export TEST_DATABASE_URL="postgres://file_server:development-only@localhost:$PGPORT/file_server"
     if [[ "${MEASURE_INSTRUMENTATION:-alloc}" == off ]]; then
-        just crates file-server build-release
+        just bin file-server build-release
     else
         cargo build --release -p file-server --bins --examples --features hotpath-prometheus,hotpath-alloc
     fi

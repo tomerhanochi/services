@@ -12,11 +12,11 @@ Install Rust, Just, and Docker, then configure OIDC and optionally an API token
 in the example TOML and run from the repository root. The live smoke test also uses Python 3:
 
 ```sh
-just crates file-server postgres-up
+just bin file-server postgres-up
 mkdir -p /tmp/file-server-local/documents
-cp crates/file-server/file_server.example.toml /tmp/file-server-local/server.toml
+cp bin/file-server/file_server.example.toml /tmp/file-server-local/server.toml
 # Edit /tmp/file-server-local/server.toml with your OIDC provider settings.
-just crates file-server run /tmp/file-server-local/server.toml
+just bin file-server run /tmp/file-server-local/server.toml
 ```
 
 Put files in `/tmp/file-server-local/documents`. OIDC enables the browser sign-in
@@ -27,23 +27,23 @@ For a complete local OIDC setup, start the HTTPS development stack and run the
 server with its development config:
 
 ```sh
-just crates file-server dev
+just bin file-server dev
 ```
 
 Open <https://localhost:8443>, then sign in to the local Hydra consent flow with
 `foo@bar.com` / `foobar`. Trust Caddy's generated root certificate at
-`crates/file-server/.dev-caddy/caddy/pki/authorities/local/root.crt` in your
+`bin/file-server/.dev-caddy/caddy/pki/authorities/local/root.crt` in your
 browser to use the local HTTPS origin without warnings. The file-server OIDC
 client already trusts that CA through `tls_ca_file`. Stop the stack with
-`just crates file-server dev-down`; its PostgreSQL
+`just bin file-server dev-down`; its PostgreSQL
 volume and generated local CA persist across restarts.
 
 The example Compose database binds localhost port 15432 and uses development
-credentials. `just crates file-server postgres-up 15434` overrides its published
-port. Run `just crates file-server postgres-down` to stop it; its named volume
+credentials. `just bin file-server postgres-up 15434` overrides its published
+port. Run `just bin file-server postgres-down` to stop it; its named volume
 retains data.
 
-Build the standalone binary with `just crates file-server build-release`; run
+Build the standalone binary with `just bin file-server build-release`; run
 `file-server --help` for the config path rules. The binary handles SIGINT and
 SIGTERM for graceful shutdown. `/healthz` reports liveness; startup connects to
 PostgreSQL and applies embedded SQL migrations before serving.
@@ -62,7 +62,7 @@ environment overrides. Double underscores separate nested fields:
 FILE_SERVER_DATABASE__URL='postgres://user:password@db/files' \
 FILE_SERVER_LISTEN='0.0.0.0:8080' \
 FILE_SERVER_PUBLIC_URL='https://files.example' \
-just crates file-server run /path/to/server.toml
+just bin file-server run /path/to/server.toml
 ```
 
 Mount paths are relative to the TOML file's parent directory. `public_url` must
@@ -79,7 +79,7 @@ grants are replaced atomically in PostgreSQL; token records are left intact.
 Required `[auth.oidc]` contains provider settings and explicit subject-to-local-user mappings. The verified
 issuer and subject identify the mapping; email and provider roles are not used
 as local account IDs. Optional `[auth.token]` specifies the PostgreSQL token-store
-connection from `authn-token-postgres`. See [file-server-authn](../file-server-authn/README.md)
+connection from `authn-token-postgres`. See [file-server-authn](../../lib/file-server-authn/README.md)
 for the exact settings and token table schema. A token may identify a user or a machine.
 
 OIDC routes are `/auth/login`, `/auth/callback`, and POST `/auth/logout`.
@@ -107,7 +107,7 @@ responses include security and private-cache headers.
 ## Test with Docker
 
 ```sh
-just crates file-server test-postgres
+just bin file-server test-postgres
 ```
 
 The recipe creates its own disposable PostgreSQL Compose project on localhost
@@ -115,7 +115,7 @@ port 15433, runs the entire workspace suite including database tests, then runs
 the built binary through a live HTTP smoke test. It verifies TOML/environment
 merging, authentication, listing, downloading, renaming, and graceful shutdown.
 Its container and volume are removed on exit. Pass a port, such as
-`just crates file-server test-postgres 15434`, to override the test port. Do not point the database integration tests at production: they replace
+`just bin file-server test-postgres 15434`, to override the test port. Do not point the database integration tests at production: they replace
 config-owned access records.
 
 For an existing disposable PostgreSQL container:
@@ -131,7 +131,7 @@ to compile the binary: SQLx queries use runtime binding, and migrations are
 embedded in the PostgreSQL adapter.
 
 `just --list` lists root commands; file-server commands are under
-`just crates file-server`. Use `just crates file-server build` and the root
+`just bin file-server`. Use `just bin file-server build` and the root
 `just check` and `just fmt` recipes for development. `test-postgres` includes a
 live smoke check; no standalone smoke recipe is needed.
 
@@ -145,9 +145,9 @@ feature unification. Individual instrumented libraries also expose `hotpath`
 for use by other executables; the executable must create a profiling guard.
 
 ```sh
-just crates file-server profile /tmp/file-server-local/server.toml
-# Or match the unoptimized `just crates file-server run` build when investigating development latency:
-just crates file-server profile-debug /tmp/file-server-local/server.toml
+just bin file-server profile /tmp/file-server-local/server.toml
+# Or match the unoptimized `just bin file-server run` build when investigating development latency:
+just bin file-server profile-debug /tmp/file-server-local/server.toml
 ```
 
 Make requests in the browser, then press Ctrl-C for a report with p50/p95/p99
@@ -160,20 +160,20 @@ installed separately from the console log filter, so `RUST_LOG=info` still captu
 SQL query timings and their function/route attribution.
 
 The Prometheus exporter is at <http://127.0.0.1:6772/metrics>. Optional allocation
-tracking is available with `just crates file-server profile-alloc CONFIG`; use
+tracking is available with `just bin file-server profile-alloc CONFIG`; use
 separate timing and allocation runs when comparing latency. For a JSON report written on graceful
 shutdown:
 
 ```sh
 HOTPATH_OUTPUT_FORMAT=json-pretty HOTPATH_OUTPUT_PATH=/tmp/file_server-profile.json \
-just crates file-server profile /tmp/file-server-local/server.toml
+just bin file-server profile /tmp/file-server-local/server.toml
 ```
 
 For the provisioned Docker dashboard, run these in separate terminals:
 
 ```sh
-just crates file-server profiling-up
-just crates file-server profile-grafana /tmp/file-server-local/server.toml
+just bin file-server profiling-up
+just bin file-server profile-grafana /tmp/file-server-local/server.toml
 ```
 
 Open <http://localhost:3001/d/file_server-hotpath> (user `admin`, password
@@ -181,7 +181,7 @@ Open <http://localhost:3001/d/file_server-hotpath> (user `admin`, password
 route response p95, function time by route, queries per request, SQL duration,
 worker function duration, and optional allocations per request. Generate traffic
 for at least two scrapes (5 seconds apart) to populate rate-based panels.
-`just crates file-server profiling-down` stops this separate Compose project.
+`just bin file-server profiling-down` stops this separate Compose project.
 
 `profile-grafana` exposes the exporter to the Docker bridge and supplies a
 matching development bearer token from `profiling/prometheus.yaml`. For a remote
@@ -203,8 +203,8 @@ Interpret measurements with these boundaries:
 - Compare `profile-debug` with `profile` before attributing development response
   times to the database.
 
-`just crates file-server check-profile` checks all profiling code.
-`just crates file-server test-profile-postgres` runs the full suite against disposable Docker PostgreSQL, then verifies live
+`just bin file-server check-profile` checks all profiling code.
+`just bin file-server test-profile-postgres` runs the full suite against disposable Docker PostgreSQL, then verifies live
 route, SQL, token, I/O, allocation and Tokio metrics, exporter authentication,
 and JSON report generation during the binary smoke test.
 

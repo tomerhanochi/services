@@ -1,7 +1,7 @@
 # File-server development and verification.
 set shell := ["bash", "-euo", "pipefail", "-c"]
 # Load the command modules for services and their crates.
-mod crates
+mod bin
 
 # List the available root commands.
 default:
