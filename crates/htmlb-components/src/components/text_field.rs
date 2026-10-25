@@ -133,7 +133,7 @@ impl<L: IntoHtml, N: AttrValue, V: AttrValue, S: IntoHtml> Component for TextFie
     fn dynamic_len_hint(&self) -> usize {
         self.label.len_hint()
             + self.name.value_len_hint()
-            + self.value.as_ref().map_or(0, V::value_len_hint)
-            + self.supporting.as_ref().map_or(0, S::len_hint)
+            + self.value.value_len_hint()
+            + self.supporting.len_hint()
     }
 }

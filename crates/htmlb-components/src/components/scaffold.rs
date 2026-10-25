@@ -55,7 +55,7 @@ impl<T: IntoHtml, B: IntoHtml, F: IntoHtml, S: IntoHtml> Component for Scaffold<
     fn dynamic_len_hint(&self) -> usize {
         self.top_app_bar.len_hint()
             + self.body.len_hint()
-            + self.bottom_app_bar.as_ref().map_or(0, F::len_hint)
-            + self.snackbar.as_ref().map_or(0, S::len_hint)
+            + self.bottom_app_bar.len_hint()
+            + self.snackbar.len_hint()
     }
 }

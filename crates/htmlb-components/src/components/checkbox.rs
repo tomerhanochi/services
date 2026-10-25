@@ -42,6 +42,6 @@ impl<N: AttrValue, V: AttrValue, F: AttrValue> Component for Checkbox<N, V, F> {
     fn dynamic_len_hint(&self) -> usize {
         self.name.value_len_hint()
             + self.value.value_len_hint()
-            + self.form.as_ref().map_or(0, F::value_len_hint)
+            + self.form.value_len_hint()
     }
 }

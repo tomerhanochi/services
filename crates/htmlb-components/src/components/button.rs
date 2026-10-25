@@ -122,6 +122,6 @@ impl<L: IntoHtml, I: IntoHtml, A: Action> Component for Button<L, I, A> {
         )
     }
     fn dynamic_len_hint(&self) -> usize {
-        self.label.len_hint() + self.icon.as_ref().map_or(0, I::len_hint)
+        self.label.len_hint() + self.icon.len_hint()
     }
 }

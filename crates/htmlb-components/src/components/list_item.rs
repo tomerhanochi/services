@@ -162,9 +162,9 @@ impl<H: IntoHtml, L: IntoHtml, S: IntoHtml, T: IntoHtml, X: IntoHtml, A: Action>
     }
     fn dynamic_len_hint(&self) -> usize {
         self.headline.len_hint()
-            + self.leading.as_ref().map_or(0, L::len_hint)
-            + self.supporting.as_ref().map_or(0, S::len_hint)
-            + self.trailing_text.as_ref().map_or(0, T::len_hint)
-            + self.trailing.as_ref().map_or(0, X::len_hint)
+            + self.leading.len_hint()
+            + self.supporting.len_hint()
+            + self.trailing_text.len_hint()
+            + self.trailing.len_hint()
     }
 }

@@ -73,8 +73,8 @@ impl<H: IntoHtml, N: IntoHtml, S: IntoHtml, A: IntoHtml> Component for TopAppBar
     }
     fn dynamic_len_hint(&self) -> usize {
         self.headline.len_hint()
-            + self.navigation.as_ref().map_or(0, N::len_hint)
-            + self.subtitle.as_ref().map_or(0, S::len_hint)
-            + self.actions.as_ref().map_or(0, A::len_hint)
+            + self.navigation.len_hint()
+            + self.subtitle.len_hint()
+            + self.actions.len_hint()
     }
 }
