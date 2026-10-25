@@ -1,0 +1,4 @@
+.git
+bin/file-server/*
+!bin/file-server/Cargo.toml
+!bin/file-server/src

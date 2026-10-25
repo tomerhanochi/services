@@ -2,6 +2,7 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 # Load the command modules for services and their crates.
 mod bin
+mod container
 
 # List the available root commands.
 default:
