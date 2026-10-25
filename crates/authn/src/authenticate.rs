@@ -1,3 +1,5 @@
+use std::error::Error;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthOutcome<T> {
     Authenticated(T),
@@ -11,7 +13,7 @@ pub enum AuthOutcome<T> {
 pub trait Authenticate {
     type Context;
     type Identity;
-    type Error;
+    type Error: Error + Send + Sync + 'static;
 
     fn authenticate(
         &self,

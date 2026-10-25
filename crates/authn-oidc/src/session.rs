@@ -9,7 +9,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use rand::{RngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::{OidcError, SessionId};
+use crate::prelude::{OidcCallbackError, OidcError, SessionId};
 
 /// Stable identity is the pair `(issuer, subject)`, not the email address.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -40,7 +40,7 @@ impl Sessions {
     ) -> Result<SessionId, OidcError> {
         let now = SystemTime::now();
         if expires_at <= now {
-            return Err(OidcError::InvalidCallback);
+            return Err(OidcCallbackError::SessionExpired.into());
         }
         let mut bytes = [0; 32];
         OsRng

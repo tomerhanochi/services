@@ -1,6 +1,6 @@
-use std::{error::Error, fmt, time::Duration};
+use std::time::Duration;
 
-use authn_oidc::prelude::{OidcClient, OidcError, SessionId};
+use authn_oidc::prelude::{OidcCallbackError, OidcClient, OidcError, SessionId};
 use axum::{
     Router,
     extract::{Query, State},
@@ -42,35 +42,44 @@ impl OidcHttp {
     }
 }
 
-#[derive(Debug)]
-pub struct OidcHttpError(pub OidcError);
+#[derive(Debug, thiserror::Error)]
+#[error("OIDC HTTP request")]
+struct OidcHttpContext;
+
+pub struct OidcHttpError {
+    status: StatusCode,
+    report: error_stack::Report<OidcHttpContext>,
+}
 
 impl From<OidcError> for OidcHttpError {
     fn from(error: OidcError) -> Self {
-        Self(error)
+        let status = match &error {
+            OidcError::Callback(_) => StatusCode::BAD_REQUEST,
+            OidcError::InvalidSessionToken | OidcError::InvalidToken(_) => StatusCode::UNAUTHORIZED,
+            OidcError::Provider(_) => StatusCode::BAD_GATEWAY,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        Self {
+            status,
+            report: error_stack::Report::new(error).change_context(OidcHttpContext),
+        }
     }
 }
 
-impl fmt::Display for OidcHttpError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl Error for OidcHttpError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&self.0)
+impl From<OidcCallbackError> for OidcHttpError {
+    fn from(error: OidcCallbackError) -> Self {
+        Self::from(OidcError::from(error))
     }
 }
 
 impl IntoResponse for OidcHttpError {
     fn into_response(self) -> Response {
-        let status = match self.0 {
-            OidcError::InvalidCallback => StatusCode::BAD_REQUEST,
-            OidcError::InvalidToken(_) => StatusCode::UNAUTHORIZED,
-            OidcError::Provider(_) => StatusCode::BAD_GATEWAY,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        };
+        let status = self.status;
+        if status.is_server_error() {
+            tracing::error!(status = %status, error = %format!("{:#}", self.report), "OIDC request failed");
+        } else {
+            tracing::warn!(status = %status, error = %format!("{:#}", self.report), "OIDC request failed");
+        }
         let mut response = status.into_response();
         private_response(&mut response);
         response
@@ -122,12 +131,18 @@ async fn callback(
     Query(query): Query<Callback>,
 ) -> Result<Response, OidcHttpError> {
     if query.error.is_some() {
-        return Err(OidcError::InvalidCallback.into());
+        return Err(OidcCallbackError::ProviderRejected.into());
     }
-    let code = query.code.as_deref().ok_or(OidcError::InvalidCallback)?;
-    let state = query.state.as_deref().ok_or(OidcError::InvalidCallback)?;
-    let Extracted::Present(browser_state) = http.cookies.login_value(&headers) else {
-        return Err(OidcError::InvalidCallback.into());
+    let Some(code) = query.code.as_deref() else {
+        return Err(OidcCallbackError::MissingAuthorizationCode.into());
+    };
+    let Some(state) = query.state.as_deref() else {
+        return Err(OidcCallbackError::MissingState.into());
+    };
+    let browser_state = match http.cookies.login_value(&headers) {
+        Extracted::Present(state) => state,
+        Extracted::Absent => return Err(OidcCallbackError::MissingLoginStateCookie.into()),
+        Extracted::Malformed => return Err(OidcCallbackError::MalformedLoginStateCookie.into()),
     };
     let session = http
         .client

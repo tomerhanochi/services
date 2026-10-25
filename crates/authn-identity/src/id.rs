@@ -1,14 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
+use thiserror::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("principal IDs must be nonempty and contain no control characters")]
 pub struct InvalidPrincipalId;
-impl fmt::Display for InvalidPrincipalId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("principal IDs must be nonempty and contain no control characters")
-    }
-}
-impl std::error::Error for InvalidPrincipalId {}
 
 macro_rules! principal_id {
     ($name:ident) => {

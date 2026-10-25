@@ -174,7 +174,7 @@ async fn signed_callback_issues_a_session_and_cannot_be_replayed() {
         client
             .complete_login("test-code", request.state.secret(), "wrong-browser")
             .await,
-        Err(OidcError::InvalidCallback)
+        Err(OidcError::Callback(OidcCallbackError::StateMismatch))
     ));
     let id = client
         .complete_login("test-code", request.state.secret(), request.state.secret())
@@ -187,7 +187,7 @@ async fn signed_callback_issues_a_session_and_cannot_be_replayed() {
         client
             .complete_login("test-code", request.state.secret(), request.state.secret())
             .await,
-        Err(OidcError::InvalidCallback)
+        Err(OidcError::Callback(OidcCallbackError::InvalidLoginState))
     ));
     client.sessions().revoke(&id).unwrap();
     assert!(client.sessions().lookup(&id).unwrap().is_none());
@@ -232,7 +232,7 @@ async fn expired_login_and_insecure_configuration_are_rejected() {
         client
             .complete_login("test-code", request.state.secret(), request.state.secret())
             .await,
-        Err(OidcError::InvalidCallback)
+        Err(OidcError::Callback(OidcCallbackError::InvalidLoginState))
     ));
     assert!(matches!(
         OidcConfig::new(

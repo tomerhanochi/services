@@ -16,7 +16,7 @@ run config="file_server.example.toml":
 
 # Start the local HTTPS stack and run the server with its development config.
 dev: (dev-up)
-    cargo run -p file-server -- config.dev.toml
+    RUST_LOG="${RUST_LOG:-debug}" cargo run -p file-server -- config.dev.toml
 
 # Start the local HTTPS development dependencies.
 dev-up:

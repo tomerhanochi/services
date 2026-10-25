@@ -3,6 +3,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use rand::{RngCore, rngs::OsRng};
 use sha2::{Digest, Sha256};
 use std::fmt;
+use thiserror::Error;
 /// An opaque bearer credential. Debug output never includes the secret.
 #[derive(Clone)]
 pub struct Token(Vec<u8>);
@@ -48,15 +49,9 @@ impl fmt::Debug for Token {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("invalid bearer token syntax")]
 pub struct InvalidToken;
-
-impl fmt::Display for InvalidToken {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("invalid bearer token syntax")
-    }
-}
-impl std::error::Error for InvalidToken {}
 
 impl std::str::FromStr for Token {
     type Err = InvalidToken;

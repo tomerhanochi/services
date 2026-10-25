@@ -12,7 +12,7 @@ impl SessionId {
         let mut decoded = [0; 32];
         if value.len() != 43 || URL_SAFE_NO_PAD.decode_slice(&value, &mut decoded).ok() != Some(32)
         {
-            return Err(OidcError::InvalidCallback);
+            return Err(OidcError::InvalidSessionToken);
         }
         Ok(Self(value))
     }

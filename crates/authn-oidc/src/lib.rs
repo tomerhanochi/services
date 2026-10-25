@@ -11,7 +11,7 @@ pub mod prelude {
     pub use crate::config::{
         HttpsIssuerUrl, HttpsRedirectUrl, OidcClientId, OidcConfig, PositiveDuration,
     };
-    pub use crate::error::OidcError;
+    pub use crate::error::{OidcCallbackError, OidcError};
     pub use crate::identity_store::{OidcIdentityStore, OidcUsers};
     pub use crate::session::{OidcIdentity, Sessions};
     pub use crate::session_id::SessionId;

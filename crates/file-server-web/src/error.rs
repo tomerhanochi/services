@@ -1,15 +1,18 @@
 //! Failures, as pages.
 
-use std::fmt::Display;
-
 use crate::html::Html;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use file_server_core::prelude::FilesError;
 
-/// Logs the cause; shows the user only that it's not their fault.
-pub fn internal(error: impl Display) -> Response {
-    tracing::error!(%error, "internal error");
+/// Logs the full cause chain; shows the user only that it's not their fault.
+#[derive(Debug, thiserror::Error)]
+#[error("internal server error")]
+struct InternalServerError;
+
+pub fn internal(error: impl std::error::Error + Send + Sync + 'static) -> Response {
+    let report = error_stack::Report::new(error).change_context(InternalServerError);
+    tracing::error!(error = %format!("{report:#}"), "internal error");
     let page = file_server_views::prelude::error(
         "Something went wrong",
         "That's on our side. Try again in a moment.",

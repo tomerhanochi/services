@@ -1,5 +1,9 @@
 use file_server::prelude::{run, shutdown_signal};
-use std::{path::PathBuf, process::ExitCode};
+use std::{error::Error, path::PathBuf, process::ExitCode};
+
+#[derive(Debug, thiserror::Error)]
+#[error("file server failed")]
+struct FileServerError(#[source] Box<dyn Error + Send + Sync>);
 
 #[tokio::main]
 #[hotpath::main(percentiles = [50, 95, 99], functions_limit = 50)]
@@ -32,7 +36,8 @@ async fn main() -> ExitCode {
     match run(&path, shutdown_signal()).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            tracing::error!(%error, "file server failed");
+            let report = error_stack::Report::new(FileServerError(error));
+            tracing::error!(error = %format!("{report:#}"), "file server failed");
             ExitCode::FAILURE
         }
     }

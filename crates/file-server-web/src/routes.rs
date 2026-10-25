@@ -11,7 +11,7 @@ use axum::{
     routing::{get, post},
 };
 use file_server_views::prelude::Asset;
-use tower_http::{compression::CompressionLayer, trace::TraceLayer};
+use tower_http::compression::CompressionLayer;
 
 pub fn router<P: Ports>(state: AppState<P>, auth_routes: Router) -> Router {
     let origin = state.public_origin.clone();
@@ -48,7 +48,7 @@ pub fn router<P: Ports>(state: AppState<P>, auth_routes: Router) -> Router {
             .layer(from_fn_with_state(origin, security::same_origin))
             .layer(from_fn(security::security_headers))
             .layer(CompressionLayer::new())
-            .layer(TraceLayer::new_for_http())
+            .layer(from_fn(security::log_request))
     )
 }
 async fn css<P: Ports>(State(state): State<AppState<P>>) -> Response {

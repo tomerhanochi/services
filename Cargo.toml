@@ -17,4 +17,5 @@ sha2 = "0.10"
 subtle = "2.6"
 sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "json", "migrate", "macros"] }
 thiserror = "2"
+error-stack = "0.8"
 hotpath = "0.28.6"

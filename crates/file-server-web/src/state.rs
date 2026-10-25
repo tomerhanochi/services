@@ -2,12 +2,12 @@ use authn::prelude::Authenticate;
 use authn_identity::prelude::Identity;
 use axum::http::request::Parts;
 use file_server_core::prelude::{AccessStore, FileService, FileStore};
-use std::{fmt::Display, sync::Arc};
+use std::{error::Error, sync::Arc};
 
 pub trait Ports: Send + Sync + 'static {
     type Files: FileStore + 'static;
     type Access: AccessStore + 'static;
-    type Auth: Authenticate<Context = Parts, Identity = Identity, Error: Display>
+    type Auth: Authenticate<Context = Parts, Identity = Identity, Error: Error + Send + 'static>
         + Send
         + Sync
         + 'static;

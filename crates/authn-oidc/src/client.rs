@@ -14,7 +14,7 @@ use openidconnect::{
 };
 use subtle::ConstantTimeEq;
 
-use crate::prelude::{OidcConfig, OidcError, OidcIdentity, SessionId, Sessions};
+use crate::prelude::{OidcCallbackError, OidcConfig, OidcError, OidcIdentity, SessionId, Sessions};
 
 type DiscoveredClient = CoreClient<
     EndpointSet,
@@ -177,11 +177,11 @@ impl OidcClient {
         state: &str,
         browser_state: &str,
     ) -> Result<SessionId, OidcError> {
-        if code.is_empty()
-            || state.is_empty()
-            || !bool::from(state.as_bytes().ct_eq(browser_state.as_bytes()))
-        {
-            return Err(OidcError::InvalidCallback);
+        if code.is_empty() || state.is_empty() {
+            return Err(OidcCallbackError::EmptyCodeOrState.into());
+        }
+        if !bool::from(state.as_bytes().ct_eq(browser_state.as_bytes())) {
+            return Err(OidcCallbackError::StateMismatch.into());
         }
         // Consume the transaction before the network request; it can only be used once.
         let login = self
@@ -189,9 +189,10 @@ impl OidcClient {
             .pending
             .lock()
             .map_err(|_| OidcError::StoreUnavailable)?
-            .remove(state)
-            .filter(|login| login.expires_at > SystemTime::now())
-            .ok_or(OidcError::InvalidCallback)?;
+            .remove(state);
+        let Some(login) = login.filter(|login| login.expires_at > SystemTime::now()) else {
+            return Err(OidcCallbackError::InvalidLoginState.into());
+        };
         let client = self.client()?;
         let response = client
             .exchange_code(AuthorizationCode::new(code.to_owned()))
@@ -206,7 +207,9 @@ impl OidcClient {
                     OidcError::Provider(Box::new(error))
                 }
             })?;
-        let token = response.id_token().ok_or(OidcError::InvalidCallback)?;
+        let token = response
+            .id_token()
+            .ok_or(OidcCallbackError::MissingIdToken)?;
         let refreshed_client;
         let mut verifier = client.id_token_verifier();
         let claims = match token.claims(&verifier, &login.nonce) {
@@ -234,7 +237,7 @@ impl OidcClient {
                     .config
                     .client_secret
                     .as_ref()
-                    .ok_or(OidcError::InvalidCallback)?;
+                    .ok_or(OidcCallbackError::MissingClientSecret)?;
                 CoreJsonWebKey::new_symmetric(secret.secret().as_bytes().to_vec())
             } else {
                 token
@@ -250,7 +253,7 @@ impl OidcClient {
                     .as_bytes()
                     .ct_eq(expected.as_str().as_bytes()),
             ) {
-                return Err(OidcError::InvalidCallback);
+                return Err(OidcCallbackError::AccessTokenHashMismatch.into());
             }
         }
         let identity = OidcIdentity {
@@ -260,10 +263,10 @@ impl OidcClient {
             email_verified: claims.email_verified().unwrap_or(false),
         };
         let expires = u64::try_from(claims.expiration().timestamp())
-            .map_err(|_| OidcError::InvalidCallback)?;
+            .map_err(|_| OidcCallbackError::InvalidTokenExpiration)?;
         let token_expiry = UNIX_EPOCH
             .checked_add(Duration::from_secs(expires))
-            .ok_or(OidcError::InvalidCallback)?;
+            .ok_or(OidcCallbackError::InvalidTokenExpiration)?;
         let session_expiry = SystemTime::now()
             .checked_add(self.session_ttl())
             .ok_or(OidcError::Configuration("session lifetime too large"))?;

@@ -15,9 +15,14 @@ impl<P: Ports> FromRequestParts<AppState<P>> for CurrentUser {
         match state.ports.authenticator().authenticate(parts).await {
             Ok(AuthOutcome::Authenticated(identity)) => Ok(Self(Some(identity))),
             Ok(AuthOutcome::NotApplicable) => Ok(Self(None)),
-            Ok(AuthOutcome::Rejected) => Err(StatusCode::UNAUTHORIZED.into_response()),
+            Ok(AuthOutcome::Rejected) => Ok(Self(None)),
             Err(error) => {
-                tracing::error!(%error, "authentication failed");
+                let report = error_stack::Report::new(error);
+                tracing::error!(
+                    component = "authentication",
+                    error = %format!("{report:#}"),
+                    "authentication failed"
+                );
                 Err(StatusCode::INTERNAL_SERVER_ERROR.into_response())
             }
         }

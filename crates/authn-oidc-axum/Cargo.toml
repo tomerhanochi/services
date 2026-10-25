@@ -6,11 +6,14 @@ publish.workspace = true
 
 [dependencies]
 hotpath = { workspace = true }
+error-stack = { workspace = true }
 authn = { path = "../authn" }
 authn-oidc = { path = "../authn-oidc" }
 axum = { workspace = true }
 serde = { workspace = true }
 cookie = "0.18"
+tracing = "0.1"
+thiserror = { workspace = true }
 
 [features]
 hotpath = ["hotpath/hotpath"]
