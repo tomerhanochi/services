@@ -5,13 +5,13 @@ public_url = "http://localhost:8080"
 url = "postgres://file_server:development-only@localhost:15432/file_server"
 max_connections = 10
 
-# Optional OIDC settings and provider-subject -> local user mapping:
-# [auth.oidc]
-# issuer = "https://issuer.example"
-# client_id = "files"
-# redirect_uri = "https://files.example/auth/callback"
-# [auth.oidc.users]
-# provider-subject = "alice"
+[auth.oidc]
+issuer = "https://issuer.example"
+client_id = "files"
+redirect_uri = "https://files.example/auth/callback"
+
+[auth.oidc.users]
+provider-subject = "alice"
 
 # Optional token store (persist only token digests in authn_api_tokens):
 # [auth.token]

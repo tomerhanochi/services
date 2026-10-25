@@ -5,7 +5,7 @@ and the authenticator from serializable deployment inputs. Configuration contain
 no pools, stores, session maps, or generic runtime objects.
 
 ```toml
-# Optional OIDC provider. Register /auth/callback with the provider.
+# Required OIDC provider. Register /auth/callback with the provider.
 [oidc]
 issuer = "https://issuer.example"
 client_id = "file-server"
@@ -23,9 +23,9 @@ database_url = "postgres://file-server:password@localhost/file-server"
 max_connections = 5
 ```
 
-Each section is optional, but at least one mechanism must be enabled. Requests
-try OIDC session cookies, then bearer tokens. Missing credentials permit fallback;
-present rejected credentials stop the chain. Both methods return
+OIDC is required; API-token authentication can be added with the optional
+`[token]` section. Requests try OIDC session cookies, then bearer tokens.
+Missing credentials permit fallback; present rejected credentials stop the chain. Both methods return
 `authn_identity::prelude::Identity::{User, Machine}`.
 
 OIDC users map verified `(issuer, subject)` pairs to local user IDs. Emails are
@@ -34,14 +34,19 @@ a restart invalidates them. Use a single replica until a shared backend is added
 Provider, issuer, and callback endpoints require HTTPS. Cookies remain Secure,
 HttpOnly, and SameSite=Lax.
 
-Setup creates `authn_api_tokens` if needed. It contains `digest BYTEA` (32 bytes),
+The `authn-token-postgres` adapter creates `authn_api_tokens` if needed. It contains `digest BYTEA` (32 bytes),
 `identity JSONB`, optional `expires_at TIMESTAMPTZ`, and `revoked BOOLEAN`.
 The identity JSON has the shared enum's serde representation, for example
 `{"Machine":{"id":"backup"}}`. Unknown, expired, and revoked tokens reject;
 database failures remain operational errors. Raw tokens are not persisted. Use
 `Token::generate` for API tokens; keep its secret only on the
 client and provision its `digest()` in PostgreSQL.
+The adapter's configuration and store types are available from
+`authn_token_postgres::prelude`.
 
-Mount `setup.routes()` under `/auth` and use `setup.authenticator` as Axum state.
-The `AppAuthenticator` alias is concrete. `authn` itself stays generic, preserving
-`Authn<A>(A::Identity)` as a single-field tuple struct.
+`AuthSetup` exposes the `OidcHttp` state and the authenticator. The
+application owns the OIDC endpoint paths and registers
+`authn_oidc_axum::prelude::{login, callback, logout}` at those paths, passing the
+`OidcHttp` value as route state. This keeps route ownership in the application
+router. The `AppAuthenticator` alias is concrete. `authn` itself stays generic,
+preserving `Authn<A>(A::Identity)` as a single-field tuple struct.

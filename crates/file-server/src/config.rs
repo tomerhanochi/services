@@ -113,8 +113,7 @@ impl Config {
             )
             .extract()?;
         let directory = path.parent().unwrap_or(Path::new("."));
-        if let Some(oidc) = config.auth.oidc.as_mut()
-            && let Some(ca_file) = &mut oidc.tls_ca_file
+        if let Some(ca_file) = &mut config.auth.oidc.tls_ca_file
             && ca_file.is_relative()
         {
             *ca_file = directory.join(&*ca_file);

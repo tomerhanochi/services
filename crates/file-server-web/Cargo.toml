@@ -10,6 +10,7 @@ hotpath = { workspace = true }
 error-stack = { workspace = true }
 authn = { path = "../authn" }
 authn-identity = { path = "../authn-identity" }
+authn-oidc-axum = { path = "../authn-oidc-axum" }
 axum = { workspace = true }
 file-server-core = { path = "../file-server-core" }
 file-server-views = { path = "../file-server-views" }

@@ -8,14 +8,14 @@ Rustls. There is no Turso or unit-of-work dependency.
 
 ## Run locally
 
-Install Rust, Just, and Docker, then configure either OIDC or an API token in
-the example TOML and run from the repository root. The live smoke test also uses Python 3:
+Install Rust, Just, and Docker, then configure OIDC and optionally an API token
+in the example TOML and run from the repository root. The live smoke test also uses Python 3:
 
 ```sh
 just crates file-server postgres-up
 mkdir -p /tmp/file-server-local/documents
 cp crates/file-server/file_server.example.toml /tmp/file-server-local/server.toml
-# Edit /tmp/file-server-local/server.toml to enable OIDC or token authentication.
+# Edit /tmp/file-server-local/server.toml with your OIDC provider settings.
 just crates file-server run /tmp/file-server-local/server.toml
 ```
 
@@ -76,11 +76,11 @@ can also rename and move. Unlisted principals receive no grants. User and machin
 IDs occupy separate namespaces. On startup, config-owned role memberships and
 grants are replaced atomically in PostgreSQL; token records are left intact.
 
-Optional `[auth.oidc]` contains provider settings and explicit subject-to-local-user mappings. The verified
+Required `[auth.oidc]` contains provider settings and explicit subject-to-local-user mappings. The verified
 issuer and subject identify the mapping; email and provider roles are not used
 as local account IDs. Optional `[auth.token]` specifies the PostgreSQL token-store
-connection. See [file-server-authn](../file-server-authn/README.md) for the exact
-settings and token table schema. A token may identify a user or a machine.
+connection from `authn-token-postgres`. See [file-server-authn](../file-server-authn/README.md)
+for the exact settings and token table schema. A token may identify a user or a machine.
 
 OIDC routes are `/auth/login`, `/auth/callback`, and POST `/auth/logout`.
 Configure HTTPS at the external URL and provider; OIDC cookies are always Secure.

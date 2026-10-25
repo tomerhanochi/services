@@ -2,21 +2,19 @@ use std::time::Duration;
 
 use authn_oidc::prelude::{OidcCallbackError, OidcClient, OidcError, SessionId};
 use axum::{
-    Router,
     extract::{Query, State},
     http::{
         HeaderMap, HeaderValue, StatusCode,
         header::{CACHE_CONTROL, SET_COOKIE},
     },
     response::{IntoResponse, Redirect, Response},
-    routing::{get, post},
 };
 use serde::Deserialize;
 
 use crate::prelude::{CookieSettings, SuccessPath};
 use authn::prelude::Extracted;
 
-/// Routes are relative: `/login`, `/callback`, and POST `/logout`.
+/// State and route handlers for an OIDC flow. The application registers the handlers at its paths.
 #[derive(Debug, Clone)]
 pub struct OidcHttp {
     client: OidcClient,
@@ -31,14 +29,6 @@ impl OidcHttp {
             cookies,
             success_path,
         }
-    }
-
-    pub fn router<S: Clone + Send + Sync + 'static>(&self) -> Router<S> {
-        Router::new()
-            .route("/login", get(login))
-            .route("/callback", get(callback))
-            .route("/logout", post(logout))
-            .with_state(self.clone())
     }
 }
 
@@ -105,7 +95,7 @@ fn set_cookie(response: &mut Response, cookie: String) -> Result<(), OidcHttpErr
 }
 
 #[hotpath::measure(future = true)]
-async fn login(State(http): State<OidcHttp>) -> Result<Response, OidcHttpError> {
+pub async fn login(State(http): State<OidcHttp>) -> Result<Response, OidcHttpError> {
     let login = http.client.begin_login()?;
     let mut response = Redirect::to(&login.url).into_response();
     set_cookie(
@@ -118,14 +108,14 @@ async fn login(State(http): State<OidcHttp>) -> Result<Response, OidcHttpError> 
 }
 
 #[derive(Deserialize)]
-struct Callback {
+pub struct Callback {
     code: Option<String>,
     state: Option<String>,
     error: Option<String>,
 }
 
 #[hotpath::measure(future = true)]
-async fn callback(
+pub async fn callback(
     State(http): State<OidcHttp>,
     headers: HeaderMap,
     Query(query): Query<Callback>,
@@ -168,7 +158,7 @@ async fn callback(
 }
 
 #[hotpath::measure(future = true)]
-async fn logout(
+pub async fn logout(
     State(http): State<OidcHttp>,
     headers: HeaderMap,
 ) -> Result<Response, OidcHttpError> {

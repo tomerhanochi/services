@@ -1,13 +1,14 @@
 use authn_identity::prelude::UserId;
+use authn_token_postgres::prelude::PostgresTokenConfig;
 use serde::Deserialize;
-use std::{collections::BTreeMap, fmt, num::NonZeroU32, path::PathBuf};
+use std::{collections::BTreeMap, fmt, path::PathBuf};
 
 /// Only serializable deployment inputs; setup creates all runtime resources.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AuthConfig {
-    pub oidc: Option<OidcAuthConfig>,
-    pub token: Option<TokenAuthConfig>,
+    pub oidc: OidcAuthConfig,
+    pub token: Option<PostgresTokenConfig>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -56,24 +57,5 @@ impl fmt::Debug for OidcAuthConfig {
             .field("client_secret", &"[REDACTED]")
             .field("redirect_uri", &self.redirect_uri)
             .finish_non_exhaustive()
-    }
-}
-
-#[derive(Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct TokenAuthConfig {
-    pub database_url: String,
-    #[serde(default = "max_connections")]
-    pub max_connections: NonZeroU32,
-}
-fn max_connections() -> NonZeroU32 {
-    NonZeroU32::new(5).unwrap()
-}
-impl fmt::Debug for TokenAuthConfig {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TokenAuthConfig")
-            .field("database_url", &"[REDACTED]")
-            .field("max_connections", &self.max_connections)
-            .finish()
     }
 }

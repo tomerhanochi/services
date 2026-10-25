@@ -2,6 +2,9 @@ use crate::{
     auth, files, security,
     state::{AppState, Ports},
 };
+use authn_oidc_axum::prelude::{
+    OidcHttp, callback as oidc_callback, login as oidc_login, logout as oidc_logout,
+};
 use axum::{
     Router,
     extract::State,
@@ -11,40 +14,49 @@ use axum::{
     routing::{get, post},
 };
 use file_server_views::prelude::Asset;
+use file_server_views::prelude::Route;
 use tower_http::compression::CompressionLayer;
 
-pub fn router<P: Ports>(state: AppState<P>, auth_routes: Router) -> Router {
+pub fn router<P: Ports>(state: AppState<P>, oidc: OidcHttp) -> Router {
     let origin = state.public_origin.clone();
-    hotpath::axum!(
+    let mut router = hotpath::axum!(
         Router::new()
-            .route("/", get(files::home::<P>))
-            .route("/m/{mount}", get(files::browse::<P>))
-            .route("/m/{mount}/", get(files::browse::<P>))
-            .route("/m/{mount}/{*path}", get(files::browse::<P>))
+            .route(Route::Home.path(), get(files::home::<P>))
+            .route(Route::BrowseMount.path(), get(files::browse::<P>))
+            .route(Route::BrowseRoot.path(), get(files::browse::<P>))
+            .route(Route::BrowsePath.path(), get(files::browse::<P>))
             .route(
-                "/rename/{mount}/{*path}",
+                Route::Rename.path(),
                 get(files::rename_form::<P>).post(files::rename::<P>),
             )
             .route(
-                "/move/{mount}/{*path}",
+                Route::Move.path(),
                 get(files::move_form::<P>).post(files::move_entry::<P>),
             )
-            .route("/actions/{mount}/{*path}", get(files::actions::<P>))
+            .route(Route::Actions.path(), get(files::actions::<P>))
             .route(
-                "/move-many/{mount}",
+                Route::MoveManyMount.path(),
                 get(files::move_many_form::<P>).post(files::move_many::<P>),
             )
             .route(
-                "/move-many/{mount}/{*path}",
+                Route::MoveManyPath.path(),
                 get(files::move_many_form::<P>).post(files::move_many::<P>),
             )
-            .route("/login", get(auth::login::<P>))
-            .route("/logout", post(auth::logout::<P>))
-            .route("/healthz", get(|| async { "ok" }))
+            .route(Route::Login.path(), get(auth::login::<P>))
+            .route(Route::Logout.path(), post(auth::logout::<P>))
+            .route(Route::Health.path(), get(|| async { "ok" }))
             .route(Asset::Css.url(), get(css::<P>))
             .route(Asset::Favicon.url(), get(favicon))
             .with_state(state)
-            .nest("/auth", auth_routes)
+    );
+    let oidc_routes = Router::new()
+        .route(Route::OidcLogin.path(), get(oidc_login))
+        .route(Route::OidcCallback.path(), get(oidc_callback))
+        .route(Route::OidcLogout.path(), post(oidc_logout))
+        .with_state(oidc);
+    router = router.merge(oidc_routes);
+    hotpath::axum!(
+        router
             .layer(from_fn_with_state(origin, security::same_origin))
             .layer(from_fn(security::security_headers))
             .layer(CompressionLayer::new())

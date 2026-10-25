@@ -5,11 +5,6 @@ use std::fmt::Write;
 use file_server_core::prelude::{EntryName, Location, MountName, RelPath};
 use htmlb::prelude::{AttrValue, CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
 
-pub const HOME: &str = "/";
-pub const LOGIN: &str = "/login";
-pub const LOGOUT: &str = "/logout";
-pub const AUTH_CALLBACK: &str = "/auth/callback";
-
 /// A file every page links to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Asset {
@@ -29,8 +24,18 @@ impl Asset {
 /// What a location URL leads to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Route {
+    Home,
+    Login,
+    Logout,
+    OidcLogin,
+    OidcCallback,
+    OidcLogout,
+    Health,
     /// `/m/{mount}/{path}`: a directory's listing (with a trailing slash) or a file's download.
     Browse,
+    BrowseMount,
+    BrowseRoot,
+    BrowsePath,
     /// `/rename/{mount}/{path}`
     Rename,
     /// `/move/{mount}/{path}`
@@ -39,9 +44,33 @@ pub enum Route {
     Actions,
     /// `/move-many/{mount}/{path}?item=…&item=…`: moving entries of a directory.
     MoveMany,
+    MoveManyMount,
+    MoveManyPath,
 }
 
 impl Route {
+    pub const fn path(self) -> &'static str {
+        match self {
+            Route::Home => "/",
+            Route::Login => "/login",
+            Route::Logout => "/logout",
+            Route::OidcLogin => "/auth/login",
+            Route::OidcCallback => "/auth/callback",
+            Route::OidcLogout => "/auth/logout",
+            Route::Health => "/healthz",
+            Route::Browse => "/m/",
+            Route::BrowseMount => "/m/{mount}",
+            Route::BrowseRoot => "/m/{mount}/",
+            Route::BrowsePath => "/m/{mount}/{*path}",
+            Route::Rename => "/rename/{mount}/{*path}",
+            Route::Move => "/move/{mount}/{*path}",
+            Route::Actions => "/actions/{mount}/{*path}",
+            Route::MoveMany => "/move-many/",
+            Route::MoveManyMount => "/move-many/{mount}",
+            Route::MoveManyPath => "/move-many/{mount}/{*path}",
+        }
+    }
+
     pub const fn prefix(self) -> &'static str {
         match self {
             Route::Browse => "/m/",
@@ -49,6 +78,7 @@ impl Route {
             Route::Move => "/move/",
             Route::Actions => "/actions/",
             Route::MoveMany => "/move-many/",
+            _ => self.path(),
         }
     }
 }
@@ -181,27 +211,6 @@ impl RunTimeHtmlSizeHint for Href<'_> {
                 .sum::<usize>()
             + 1)
         .saturating_sub(Self::SIZE_HINT)
-    }
-}
-
-/// `/login?next=<path>`, `next` already being a path on this site.
-pub struct LoginHref<'a>(pub &'a str);
-
-impl AttrValue for LoginHref<'_> {
-    fn write_value(self, out: &mut String) {
-        out.push_str(LOGIN);
-        if !self.0.is_empty() && self.0 != HOME {
-            out.push_str("?next=");
-            encode(out, self.0);
-        }
-    }
-}
-impl CompileTimeHtmlSizeHint for LoginHref<'_> {
-    const SIZE_HINT: usize = LOGIN.len();
-}
-impl RunTimeHtmlSizeHint for LoginHref<'_> {
-    fn size_hint(&self) -> usize {
-        LOGIN.len() + 6 + self.0.len() - Self::SIZE_HINT
     }
 }
 

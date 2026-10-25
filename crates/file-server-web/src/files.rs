@@ -5,7 +5,7 @@ use authn_identity::prelude::Identity;
 use axum::Form;
 // Unlike axum's `Query`, reads repeated keys (`?item=a&item=b`) into a `Vec`.
 use axum::body::Body;
-use axum::extract::{OriginalUri, Path, Query, State};
+use axum::extract::{Path, Query, State};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum_extra::extract::Query as MultiQuery;
@@ -37,17 +37,6 @@ impl At {
     }
 }
 
-/// Anonymous visitors see the sign-in page, which comes back here afterwards.
-fn sign_in(uri: &OriginalUri) -> Response {
-    let next = uri.path_and_query().map_or("/", |p| p.as_str());
-    let status = if next == "/" {
-        StatusCode::OK
-    } else {
-        StatusCode::UNAUTHORIZED
-    };
-    (status, Html(views::signed_out(next))).into_response()
-}
-
 fn listing_url(dir: &Location, done: Option<Done>) -> String {
     let mut url = String::new();
     Href::dir(dir).write_value(&mut url);
@@ -63,11 +52,7 @@ fn listing_url(dir: &Location, done: Option<Done>) -> String {
 pub async fn home<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
-    uri: OriginalUri,
 ) -> Response {
-    let Some(user) = user else {
-        return sign_in(&uri);
-    };
     match state.ports.files().mounts(&user).await {
         Ok(mounts) => Html(views::home(state.sign_out(&user), &mounts)).into_response(),
         Err(e) => files_error(e),
@@ -86,13 +71,9 @@ pub struct BrowseQuery {
 pub async fn browse<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
-    uri: OriginalUri,
     Path(at): Path<At>,
     Query(query): Query<BrowseQuery>,
 ) -> Response {
-    let Some(user) = user else {
-        return sign_in(&uri);
-    };
     let result = async {
         let at = at.location()?;
         let files = state.ports.files();
@@ -178,12 +159,8 @@ fn content_disposition(name: &str) -> HeaderValue {
 pub async fn rename_form<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
-    uri: OriginalUri,
     Path(at): Path<At>,
 ) -> Response {
-    let Some(user) = user else {
-        return sign_in(&uri);
-    };
     let result = async {
         let at = at.location()?;
         let capabilities = state.ports.files().capabilities(&user, &at.mount).await?;
@@ -206,12 +183,8 @@ pub async fn rename_form<P: Ports>(
 pub async fn actions<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
-    uri: OriginalUri,
     Path(at): Path<At>,
 ) -> Response {
-    let Some(user) = user else {
-        return sign_in(&uri);
-    };
     let result = async {
         let at = at.location()?;
         at.path.name().ok_or(FilesError::Root)?;
@@ -240,13 +213,9 @@ pub struct RenameForm {
 pub async fn rename<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
-    uri: OriginalUri,
     Path(at): Path<At>,
     Form(form): Form<RenameForm>,
 ) -> Response {
-    let Some(user) = user else {
-        return sign_in(&uri);
-    };
     let at = match at.location() {
         Ok(at) => at,
         Err(e) => return files_error(e),
@@ -291,13 +260,9 @@ pub struct MoveQuery {
 pub async fn move_form<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
-    uri: OriginalUri,
     Path(at): Path<At>,
     Query(query): Query<MoveQuery>,
 ) -> Response {
-    let Some(user) = user else {
-        return sign_in(&uri);
-    };
     let result = async {
         let item = at.location()?;
         let parent = item.parent().ok_or(FilesError::Root)?;
@@ -353,13 +318,9 @@ pub struct MoveForm {
 pub async fn move_entry<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
-    uri: OriginalUri,
     Path(at): Path<At>,
     Form(form): Form<MoveForm>,
 ) -> Response {
-    let Some(user) = user else {
-        return sign_in(&uri);
-    };
     let result = async {
         let item = at.location()?;
         let into = Location::new(
@@ -440,13 +401,9 @@ impl Selection {
 pub async fn move_many_form<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
-    uri: OriginalUri,
     Path(at): Path<At>,
     MultiQuery(query): MultiQuery<SelectionQuery>,
 ) -> Response {
-    let Some(user) = user else {
-        return sign_in(&uri);
-    };
     let selection = match Selection::new(query) {
         Ok(selection) => selection,
         Err(response) => return response,
@@ -475,14 +432,10 @@ pub async fn move_many_form<P: Ports>(
 pub async fn move_many<P: Ports>(
     State(state): State<AppState<P>>,
     CurrentUser(user): CurrentUser,
-    uri: OriginalUri,
     Path(at): Path<At>,
     MultiQuery(query): MultiQuery<SelectionQuery>,
     Form(form): Form<MoveForm>,
 ) -> Response {
-    let Some(user) = user else {
-        return sign_in(&uri);
-    };
     let selection = match Selection::new(query) {
         Ok(selection) => selection,
         Err(response) => return response,

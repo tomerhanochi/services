@@ -8,20 +8,20 @@ publish.workspace = true
 hotpath = { workspace = true }
 authn-identity = { path = "../authn-identity" }
 authn = { path = "../authn" }
-authn-axum = { path = "../authn-axum" }
 authn-token = { path = "../authn-token" }
+authn-token-postgres = { path = "../authn-token-postgres" }
 authn-token-axum = { path = "../authn-token-axum" }
 authn-oidc = { path = "../authn-oidc" }
 authn-oidc-axum = { path = "../authn-oidc-axum" }
-axum = { workspace = true }
 serde = { workspace = true }
-sqlx = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+authn-axum = { path = "../authn-axum" }
+axum = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
 tower = { version = "0.5", features = ["util"] }
 toml = "0.9"
 
 [features]
-hotpath = ["hotpath/hotpath"]
+hotpath = ["hotpath/hotpath", "authn-token-postgres/hotpath"]

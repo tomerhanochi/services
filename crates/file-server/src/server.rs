@@ -61,7 +61,7 @@ impl Server {
         .await?;
         let setup = configure(&config.auth).await?;
         access.sync_access(&grants, &principals).await?;
-        let auth_routes = setup.routes();
+        let oidc = setup.oidc;
         let state = AppState {
             ports: Arc::new(AppPorts {
                 files: FileService::new(store, access),
@@ -71,11 +71,10 @@ impl Server {
                 &htmlb_components_theme::prelude::THEME,
             )),
             public_origin: config.public_origin,
-            oidc_enabled: setup.oidc.is_some(),
         };
         Ok(Self {
             listen: config.listen,
-            router: file_server_web::prelude::router(state, auth_routes),
+            router: file_server_web::prelude::router(state, oidc),
         })
     }
     pub fn router(self) -> Router {

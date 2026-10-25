@@ -15,7 +15,7 @@ pub fn home_button() -> impl IntoHtml {
     icon_button()
         .icon(Icons::Home)
         .label("All folders")
-        .href(urls::HOME)
+        .href(urls::Route::Home.path())
 }
 
 /// A listing's navigation: to the folder above `at`, or to the mounts from a mount's root.
@@ -31,7 +31,7 @@ pub fn up_button(at: &Location) -> impl IntoHtml {
             icon_button()
                 .icon(Icons::ArrowBack)
                 .label("All folders")
-                .href(urls::HOME),
+                .href(urls::Route::Home.path()),
         ),
     }
 }
@@ -48,11 +48,14 @@ pub fn select_button(at: &Location) -> impl IntoHtml {
 /// signed-in user's name, when they can sign out.
 pub fn sign_out(user: Option<&str>) -> impl IntoHtml {
     user.map(|name| {
-        form().method(FormMethod::Post).action(urls::LOGOUT).child(
-            icon_button()
-                .icon(Icons::Logout)
-                .label(("Sign out ", name))
-                .submit(),
-        )
+        form()
+            .method(FormMethod::Post)
+            .action(urls::Route::Logout.path())
+            .child(
+                icon_button()
+                    .icon(Icons::Logout)
+                    .label(("Sign out ", name))
+                    .submit(),
+            )
     })
 }

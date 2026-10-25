@@ -197,6 +197,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "authn-token-postgres"
+version = "0.1.0"
+dependencies = [
+ "authn-identity",
+ "authn-token",
+ "hotpath",
+ "serde",
+ "sqlx",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -906,10 +919,10 @@ dependencies = [
  "authn-oidc-axum",
  "authn-token",
  "authn-token-axum",
+ "authn-token-postgres",
  "axum",
  "hotpath",
  "serde",
- "sqlx",
  "thiserror 2.0.21",
  "tokio",
  "toml 0.9.12+spec-1.1.0",
@@ -966,6 +979,7 @@ version = "0.1.0"
 dependencies = [
  "authn",
  "authn-identity",
+ "authn-oidc-axum",
  "axum",
  "axum-extra",
  "error-stack",
