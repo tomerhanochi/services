@@ -22,7 +22,7 @@ provider-subject = "alice"
 
 # Optional API-token database. Store only SHA-256 token digests.
 [token]
-database_url = "postgres://file_server:password@localhost/file_server"
+database_url = "postgres://file-server:password@localhost/file-server"
 max_connections = 5
 ```
 

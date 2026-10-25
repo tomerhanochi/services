@@ -904,7 +904,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "file_server"
+name = "file-server"
 version = "0.1.0"
 dependencies = [
  "argon2",
@@ -912,14 +912,14 @@ dependencies = [
  "authn-token",
  "axum",
  "figment",
- "file_server_authn",
- "file_server_core",
- "file_server_fs",
- "file_server_postgres",
- "file_server_web",
+ "file-server-authn",
+ "file-server-core",
+ "file-server-fs",
+ "file-server-postgres",
+ "file-server-web",
  "hotpath",
- "htmlb_components",
- "htmlb_components_theme",
+ "htmlb-components",
+ "htmlb-components-theme",
  "http-body-util",
  "rand 0.8.8",
  "serde",
@@ -936,7 +936,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "file_server_authn"
+name = "file-server-authn"
 version = "0.1.0"
 dependencies = [
  "argon2",
@@ -963,7 +963,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "file_server_core"
+name = "file-server-core"
 version = "0.1.0"
 dependencies = [
  "authn-identity",
@@ -974,10 +974,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "file_server_fs"
+name = "file-server-fs"
 version = "0.1.0"
 dependencies = [
- "file_server_core",
+ "file-server-core",
  "hotpath",
  "rustix",
  "tempfile",
@@ -985,11 +985,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "file_server_postgres"
+name = "file-server-postgres"
 version = "0.1.0"
 dependencies = [
  "authn-identity",
- "file_server_core",
+ "file-server-core",
  "hotpath",
  "serde",
  "sqlx",
@@ -997,25 +997,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "file_server_views"
+name = "file-server-views"
 version = "0.1.0"
 dependencies = [
- "file_server_core",
+ "file-server-core",
  "hotpath",
  "htmlb",
- "htmlb_components",
+ "htmlb-components",
 ]
 
 [[package]]
-name = "file_server_web"
+name = "file-server-web"
 version = "0.1.0"
 dependencies = [
  "authn",
  "authn-identity",
  "axum",
  "axum-extra",
- "file_server_core",
- "file_server_views",
+ "file-server-core",
+ "file-server-views",
  "hotpath",
  "htmlb",
  "serde",
@@ -1361,18 +1361,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "htmlb_components"
+name = "htmlb-components"
 version = "0.1.0"
 dependencies = [
  "htmlb",
 ]
 
 [[package]]
-name = "htmlb_components_theme"
+name = "htmlb-components-theme"
 version = "0.1.0"
 dependencies = [
  "htmlb",
- "htmlb_components",
+ "htmlb-components",
 ]
 
 [[package]]

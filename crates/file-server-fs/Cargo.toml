@@ -1,5 +1,5 @@
 [package]
-name = "file_server_fs"
+name = "file-server-fs"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
@@ -7,7 +7,7 @@ description = "Async filesystem adapter for trusted file-server mounts."
 
 [dependencies]
 hotpath = { workspace = true }
-file_server_core = { path = "../file_server_core" }
+file-server-core = { path = "../file-server-core" }
 rustix = { version = "1", features = ["fs"] }
 tokio = { workspace = true, features = ["fs", "rt"] }
 

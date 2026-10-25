@@ -1,5 +1,5 @@
 [package]
-name = "file_server_authn"
+name = "file-server-authn"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true

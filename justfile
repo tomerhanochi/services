@@ -6,45 +6,45 @@ default:
 
 # Build the working binary and provisioning helpers.
 build:
-    cargo build -p file_server --bins --examples
+    cargo build -p file-server --bins --examples
 
 build-release:
-    cargo build -p file_server --release --bin file_server
+    cargo build -p file-server --release --bin file-server
 
-run config="crates/file_server/file_server.example.toml":
-    cargo run -p file_server -- {{ quote(config) }}
+run config="crates/file-server/file_server.example.toml":
+    cargo run -p file-server -- {{ quote(config) }}
 
 build-profile:
-    cargo build --release -p file_server --bins --examples --features hotpath-prometheus
+    cargo build --release -p file-server --bins --examples --features hotpath-prometheus
 
 # Profile optimized code; Ctrl-C flushes the function/SQL/route report.
-profile config="crates/file_server/file_server.example.toml":
-    cargo run --release -p file_server --features hotpath-prometheus -- {{ quote(config) }}
+profile config="crates/file-server/file_server.example.toml":
+    cargo run --release -p file-server --features hotpath-prometheus -- {{ quote(config) }}
 
 # Match `just run` optimization settings when investigating development latency.
-profile-debug config="crates/file_server/file_server.example.toml":
-    cargo run -p file_server --features hotpath-prometheus -- {{ quote(config) }}
+profile-debug config="crates/file-server/file_server.example.toml":
+    cargo run -p file-server --features hotpath-prometheus -- {{ quote(config) }}
 
 # Allocation tracking adds overhead; enable it separately from timing runs.
-profile-alloc config="crates/file_server/file_server.example.toml":
-    cargo run --release -p file_server --features hotpath-prometheus,hotpath-alloc -- {{ quote(config) }}
+profile-alloc config="crates/file-server/file_server.example.toml":
+    cargo run --release -p file-server --features hotpath-prometheus,hotpath-alloc -- {{ quote(config) }}
 
 # The local Docker scraper uses the matching development-only bearer token.
-profile-grafana config="crates/file_server/file_server.example.toml":
+profile-grafana config="crates/file-server/file_server.example.toml":
     HOTPATH_PROMETHEUS_HOST=0.0.0.0 HOTPATH_PROMETHEUS_AUTH_TOKEN=file-server-local-profiling just profile {{ quote(config) }}
 
 # Grafana :3001 (admin / local-profiling), Prometheus :9090, both localhost-only.
 profiling-up:
-    docker compose --file crates/file_server/profiling/compose.yaml up --detach --wait
+    docker compose --file crates/file-server/profiling/compose.yaml up --detach --wait
 
 profiling-down:
-    docker compose --file crates/file_server/profiling/compose.yaml down
+    docker compose --file crates/file-server/profiling/compose.yaml down
 
 check-profile:
-    cargo check --workspace --all-targets --features file_server/hotpath-prometheus,file_server/hotpath-alloc
+    cargo check --workspace --all-targets --features file-server/hotpath-prometheus,file-server/hotpath-alloc
 
 test-profile:
-    cargo test --workspace --all-targets --features file_server/hotpath-prometheus,file_server/hotpath-alloc
+    cargo test --workspace --all-targets --features file-server/hotpath-prometheus,file-server/hotpath-alloc
 
 # Use the Docker integration workflow with profiling and assert live telemetry.
 test-profile-postgres port="15434":
@@ -52,7 +52,7 @@ test-profile-postgres port="15434":
 
 # Read a password from stdin and print only its independently salted Argon2id hash.
 hash-password:
-    @cargo run --quiet -p file_server --example hash_password
+    @cargo run --quiet -p file-server --example hash_password
 
 fmt:
     cargo fmt --all
@@ -70,11 +70,11 @@ test-all:
     cargo test --workspace --all-targets -- --include-ignored --test-threads=1
 
 postgres-up port="15432":
-    PGPORT={{ quote(port) }} docker compose --file crates/file_server/compose.yaml up --detach --wait
+    PGPORT={{ quote(port) }} docker compose --file crates/file-server/compose.yaml up --detach --wait
 
 # Stop the development database while retaining its named volume.
 postgres-down:
-    docker compose --file crates/file_server/compose.yaml down
+    docker compose --file crates/file-server/compose.yaml down
 
 # Create a private disposable PostgreSQL container, run everything, and clean it up.
 test-postgres port="15433":
@@ -82,14 +82,14 @@ test-postgres port="15433":
     set -euo pipefail
     project="file-server-test-$$"
     export PGPORT={{ quote(port) }}
-    compose=(docker compose --project-name "$project" --file crates/file_server/compose.yaml)
+    compose=(docker compose --project-name "$project" --file crates/file-server/compose.yaml)
     cleanup() { "${compose[@]}" down --volumes >/dev/null; }
     trap cleanup EXIT
     "${compose[@]}" up --detach --wait
     export TEST_DATABASE_URL="postgres://file_server:development-only@localhost:$PGPORT/file_server"
     if [[ "${SMOKE_HOTPATH:-}" == 1 ]]; then
-        cargo test --workspace --all-targets --features file_server/hotpath-prometheus,file_server/hotpath-alloc -- --include-ignored --test-threads=1
-        cargo build -p file_server --bins --examples --features hotpath-prometheus,hotpath-alloc
+        cargo test --workspace --all-targets --features file-server/hotpath-prometheus,file-server/hotpath-alloc -- --include-ignored --test-threads=1
+        cargo build -p file-server --bins --examples --features hotpath-prometheus,hotpath-alloc
     else
         just test-all
         just build
@@ -126,7 +126,7 @@ smoke:
         encoded = subprocess.check_output(
             [str(target / "examples/hash_password")], input=b"smoke-password\n")
         (directory / "users/alice").write_bytes(encoded)
-        example = (root / "crates/file_server/file_server.example.toml").read_text()
+        example = (root / "crates/file-server/file_server.example.toml").read_text()
         # The invalid file value must be overridden by the environment.
         example = example.replace(
             "postgres://file_server:development-only@localhost:15432/file_server",
@@ -159,7 +159,7 @@ smoke:
         base = f"http://127.0.0.1:{port}"
         authorization = "Basic " + base64.b64encode(b"alice:smoke-password").decode()
         with (directory / "server.log").open("w+") as log:
-            process = subprocess.Popen([str(target / "file_server")], env=environment,
+            process = subprocess.Popen([str(target / "file-server")], env=environment,
                                        stdout=log, stderr=subprocess.STDOUT)
             try:
                 for attempt in range(100):
@@ -245,14 +245,14 @@ measure-release output="/tmp/file-server-measurement" samples="30" port="15435":
     set -euo pipefail
     project="file-server-measure-$$"
     export PGPORT={{ quote(port) }}
-    compose=(docker compose --project-name "$project" --file crates/file_server/compose.yaml)
+    compose=(docker compose --project-name "$project" --file crates/file-server/compose.yaml)
     trap '"${compose[@]}" down --volumes >/dev/null' EXIT
     "${compose[@]}" up --detach --wait
     export TEST_DATABASE_URL="postgres://file_server:development-only@localhost:$PGPORT/file_server"
     if [[ "${MEASURE_INSTRUMENTATION:-alloc}" == off ]]; then
         just build-release
     else
-        cargo build --release -p file_server --bins --examples --features hotpath-prometheus,hotpath-alloc
+        cargo build --release -p file-server --bins --examples --features hotpath-prometheus,hotpath-alloc
     fi
     just _measure-release {{ quote(output) }} {{ quote(samples) }}
 
@@ -325,7 +325,7 @@ _measure-release output samples:
         (documents / "download.bin").write_bytes(b"x" * (1024 * 1024))
         encoded = subprocess.check_output([str(target / "examples/hash_password")], input=b"measurement-password\n")
         (fixture / "users/alice").write_bytes(encoded)
-        config = Path("crates/file_server/file_server.example.toml").read_text()
+        config = Path("crates/file-server/file_server.example.toml").read_text()
         (fixture / "server.toml").write_text(config)
         environment = {k: v for k, v in os.environ.items()
                        if not k.startswith(("FILE_SERVER_", "HOTPATH_"))}
@@ -342,7 +342,7 @@ _measure-release output samples:
         results = {"build": "release", "allocation_tracking": profiling, "samples_per_scenario": samples,
                    "password_hash_parameters": encoded.decode().split("$")[3], "scenarios": []}
         with (output / "server.log").open("w+") as log:
-            process = subprocess.Popen([str(target / "file_server"), str(fixture / "server.toml")],
+            process = subprocess.Popen([str(target / "file-server"), str(fixture / "server.toml")],
                                        env=environment, stdout=log, stderr=subprocess.STDOUT)
             try:
                 for attempt in range(100):
@@ -459,4 +459,4 @@ _measure-release output samples:
 
 # Render editor/viewer listings and count repeated SVG markup without a database.
 inspect-html output="/tmp/file-server-html":
-    cargo run --release -p file_server_views --example html_size -- {{ quote(output) }}
+    cargo run --release -p file-server-views --example html_size -- {{ quote(output) }}

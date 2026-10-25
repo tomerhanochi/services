@@ -2,7 +2,7 @@
 
 A working Axum binary for browsing, downloading, renaming, and moving files in
 configured mounts. The restored legacy application uses the current `authn*`,
-`htmlb`, and `htmlb_components` crates. PostgreSQL stores role assignments, mount
+`htmlb`, and `htmlb-components` crates. PostgreSQL stores role assignments, mount
 grants, and optional API-token digests through SQLx's PostgreSQL driver with
 Rustls. There is no Turso or unit-of-work dependency.
 
@@ -14,7 +14,7 @@ test also uses Python 3:
 ```sh
 just postgres-up
 mkdir -p /tmp/file-server-local/users /tmp/file-server-local/documents
-cp crates/file_server/file_server.example.toml /tmp/file-server-local/server.toml
+cp crates/file-server/file_server.example.toml /tmp/file-server-local/server.toml
 printf '%s' 'choose-a-password' | just hash-password > /tmp/file-server-local/users/alice
 just run /tmp/file-server-local/server.toml
 ```
@@ -29,7 +29,7 @@ The example Compose database binds localhost port 15432 and uses development
 credentials. `just postgres-up 15434` overrides its published port. Run `just postgres-down` to stop it; its named volume retains data.
 
 Build the standalone binary with `just build-release`; run
-`file_server --help` for the config path rules. The binary handles SIGINT and
+`file-server --help` for the config path rules. The binary handles SIGINT and
 SIGTERM for graceful shutdown. `/healthz` reports liveness; startup connects to
 PostgreSQL and applies embedded SQL migrations before serving.
 
@@ -40,7 +40,7 @@ configuration values. Startup constructs stores, connection pools, services,
 OIDC clients, and sessions internally.
 
 A positional config path takes precedence over `FILE_SERVER_CONFIG`, whose
-default is `file_server.toml`. The TOML file is merged with `FILE_SERVER_*`
+default is `file-server.toml`. The TOML file is merged with `FILE_SERVER_*`
 environment overrides. Double underscores separate nested fields:
 
 ```sh
@@ -65,7 +65,7 @@ grants are replaced atomically in PostgreSQL; token records are left intact.
 provider settings and explicit subject-to-local-user mappings. The verified
 issuer and subject identify the mapping; email and provider roles are not used
 as local account IDs. Optional `[auth.token]` specifies the PostgreSQL token-store
-connection. See [file_server_authn](../file_server_authn/README.md) for the exact
+connection. See [file-server-authn](../file-server-authn/README.md) for the exact
 settings and token table schema. A token may identify a user or a machine.
 
 OIDC routes are `/auth/login`, `/auth/callback`, and POST `/auth/logout`.
@@ -148,7 +148,7 @@ allocation runs when comparing latency. For a JSON report written on graceful
 shutdown:
 
 ```sh
-HOTPATH_OUTPUT_FORMAT=json-pretty HOTPATH_OUTPUT_PATH=/tmp/file-server-profile.json \
+HOTPATH_OUTPUT_FORMAT=json-pretty HOTPATH_OUTPUT_PATH=/tmp/file_server-profile.json \
 just profile /tmp/file-server-local/server.toml
 ```
 
@@ -159,7 +159,7 @@ just profiling-up
 just profile-grafana /tmp/file-server-local/server.toml
 ```
 
-Open <http://localhost:3001/d/file-server-hotpath> (user `admin`, password
+Open <http://localhost:3001/d/file_server-hotpath> (user `admin`, password
 `local-profiling`). Prometheus is at <http://localhost:9090>. The dashboard shows
 route response p95, function time by route, queries per request, SQL duration,
 worker function duration, and optional allocations per request. Generate traffic

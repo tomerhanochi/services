@@ -21,7 +21,7 @@ async fn main() -> ExitCode {
         .is_some_and(|arg| arg == "--help" || arg == "-h")
     {
         println!(
-            "Usage: file_server [CONFIG]\nDefaults to FILE_SERVER_CONFIG, then file_server.toml.\nOverride nested TOML keys with FILE_SERVER_SECTION__KEY."
+            "Usage: file-server [CONFIG]\nDefaults to FILE_SERVER_CONFIG, then file_server.toml.\nOverride nested TOML keys with FILE_SERVER_SECTION__KEY."
         );
         return ExitCode::SUCCESS;
     }
