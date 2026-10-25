@@ -70,28 +70,3 @@ postgres-up port="15432":
 # Stop the development database while retaining its named volume.
 postgres-down:
     docker compose --file compose.yaml down
-
-# Create a private disposable PostgreSQL container, run everything, and clean it up.
-test-postgres port="15433":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    project="file-server-test-$$"
-    export COMPOSE_PROJECT_NAME="$project"
-    export PGPORT={{ quote(port) }}
-    compose=(docker compose --project-name "$project" --file compose.yaml)
-    cleanup() { "${compose[@]}" down --volumes >/dev/null; }
-    trap cleanup EXIT
-    "${compose[@]}" up --detach --wait
-    export TEST_DATABASE_URL="postgres://file_server:development-only@localhost:$PGPORT/file_server"
-    if [[ "${SMOKE_HOTPATH:-}" == 1 ]]; then
-        cargo test --workspace --all-targets --features file-server/hotpath-prometheus,file-server/hotpath-alloc -- --include-ignored --test-threads=1
-        cargo build -p file-server --bins --examples --features hotpath-prometheus,hotpath-alloc
-    else
-        just test-all
-        just bin file-server build
-    fi
-    python3 smoke.py
-
-# Render editor/viewer listings and count repeated SVG markup without a database.
-inspect-html output="/tmp/file-server-html":
-    cargo run --release -p file-server-views --example html_size -- {{ quote(output) }}
