@@ -9,6 +9,13 @@ resolver = "3"
 edition = "2024"
 publish = false
 
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
+
 [workspace.dependencies]
 axum = "0.8.9"
 tokio = "1.53.2"

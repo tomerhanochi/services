@@ -40,6 +40,14 @@ hooks = [
     pass_filenames = false
   },
   {
+    id = "justfile-check",
+    name = "just --list",
+    entry = "just --list",
+    language = "system",
+    files = '(^|/)(justfile|[^/]+\.just)$',
+    pass_filenames = false
+  },
+  {
     id = "crates-check",
     name = "just check",
     entry = "just check",
