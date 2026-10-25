@@ -1,0 +1,26 @@
+listen = "0.0.0.0:8080"
+public_url = "https://localhost:8443"
+
+[database]
+url = "postgres://file_server:development-only@localhost:15434/file_server"
+max_connections = 10
+
+[auth.oidc]
+issuer = "https://localhost:8444/"
+client_id = "file-server-local"
+client_secret = "local-development-client-secret"
+redirect_uri = "https://localhost:8443/auth/callback"
+tls_ca_file = ".dev-caddy/caddy/pki/authorities/local/root.crt"
+
+[auth.oidc.users]
+"foo@bar.com" = "alice"
+
+[[mounts]]
+name = "documents"
+path = "dev-documents"
+
+[roles.admin]
+documents = "editor"
+
+[users]
+alice = ["admin"]

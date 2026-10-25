@@ -1,0 +1,26 @@
+[package]
+name = "file-server-web"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "HTTP routes for the file server, using shared principal identities."
+
+[dependencies]
+hotpath = { workspace = true }
+error-stack = { workspace = true }
+authn = { path = "../authn" }
+authn-identity = { path = "../authn-identity" }
+authn-oidc-axum = { path = "../authn-oidc-axum" }
+axum = { workspace = true }
+file-server-core = { path = "../file-server-core" }
+file-server-views = { path = "../file-server-views" }
+axum-extra = { version = "0.12.6", default-features = false, features = ["query"] }
+htmlb = { path = "../htmlb" }
+serde = { workspace = true }
+tokio-util = { version = "0.7", features = ["io"] }
+tower-http = { version = "0.6", features = ["compression-br", "compression-gzip"] }
+tracing = "0.1"
+thiserror = { workspace = true }
+
+[features]
+hotpath = ["hotpath/hotpath", "hotpath/axum-0-8", "hotpath/tokio"]

@@ -1,0 +1,14 @@
+localhost:8443 {
+	tls internal
+	reverse_proxy host.docker.internal:8080
+}
+
+localhost:8444 {
+	tls internal
+	reverse_proxy hydra:4444
+}
+
+localhost:8445 {
+	tls internal
+	reverse_proxy consent:3000
+}

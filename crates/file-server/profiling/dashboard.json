@@ -1,0 +1,217 @@
+{
+  "uid": "file-server-hotpath",
+  "title": "File server hotpath",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Response head p95 by route",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "file-server-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (route) (rate(hotpath_server_duration_seconds[$__rate_interval])))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Average function time by route",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "file-server-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(hotpath_function_route_duration_seconds_total[$__rate_interval]) / rate(hotpath_function_route_timed_calls_total[$__rate_interval])",
+          "legendFormat": "{{route}} {{function}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "SQL queries per request",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "file-server-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(hotpath_server_sql_calls_total[$__rate_interval]) / rate(hotpath_server_scoped_requests_total[$__rate_interval])",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Average SQL query time",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "file-server-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_sum(rate(hotpath_sql_duration_seconds[$__rate_interval])) / histogram_count(rate(hotpath_sql_duration_seconds[$__rate_interval]))",
+          "legendFormat": "{{route}} {{source}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Average function time (includes blocking workers)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "file-server-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_sum(rate(hotpath_function_duration_seconds[$__rate_interval])) / histogram_count(rate(hotpath_function_duration_seconds[$__rate_interval]))",
+          "legendFormat": "{{function}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Function allocations per request (allocation feature)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "file-server-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 18,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(hotpath_function_route_alloc_bytes_total[$__rate_interval]) / on(route) group_left rate(hotpath_server_scoped_requests_total[$__rate_interval])",
+          "legendFormat": "{{route}} {{function}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: file_server
+      POSTGRES_PASSWORD: development-only
+      POSTGRES_DB: file_server
+    ports:
+      - "127.0.0.1:${PGPORT:-15432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U file_server -d file_server"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+volumes:
+  postgres-data:

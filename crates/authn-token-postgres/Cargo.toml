@@ -1,0 +1,20 @@
+[package]
+name = "authn-token-postgres"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "PostgreSQL token store for authn-token."
+
+[dependencies]
+authn-identity = { path = "../authn-identity" }
+authn-token = { path = "../authn-token" }
+hotpath = { workspace = true }
+serde = { workspace = true }
+sqlx = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[features]
+hotpath = ["hotpath/hotpath"]

@@ -1,0 +1,19 @@
+[package]
+name = "file-server-core"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "File names, access checks, and browsing and mutation services."
+
+[dependencies]
+hotpath = { workspace = true }
+authn-identity = { path = "../authn-identity" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["io-util"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[features]
+hotpath = ["hotpath/hotpath"]
