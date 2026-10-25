@@ -43,4 +43,4 @@ jobs:
         env:
           CHART_VERSION: ${{ inputs.chart_version }}
           OWNER: ${{ github.repository_owner }}
-        run: helm push "$RUNNER_TEMP/file-server-${CHART_VERSION}.tgz" "oci://ghcr.io/${OWNER}/charts"
+        run: helm push "$RUNNER_TEMP/file-server-${CHART_VERSION}.tgz" "oci://ghcr.io/${OWNER}/services/charts"

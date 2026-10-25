@@ -65,7 +65,7 @@ After publishing a chart version to GHCR:
 
 ```sh
 helm registry login ghcr.io
-helm install files oci://ghcr.io/OWNER/charts/file-server \
+helm install files oci://ghcr.io/OWNER/services/charts/file-server \
   --version CHART_VERSION \
   --namespace files --create-namespace \
   --set fileServer.publicUrl=https://files.example.com \
