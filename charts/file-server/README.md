@@ -1,7 +1,7 @@
 # File Server Helm Chart
 
 This chart deploys the file-server container with a ConfigMap for non-secret
-settings and optional Ingress and Gateway API HTTPRoute resources. Each file
+settings and an optional Gateway API HTTPRoute. Each file
 mount uses a pre-existing PersistentVolumeClaim; the chart does not manage PVs
 or PVCs. PostgreSQL and OAuth client credentials come from pre-existing
 Kubernetes Secrets; the chart does not create or store credentials.
@@ -81,8 +81,7 @@ httpRoute:
 ```
 
 The cluster must have the Gateway API `HTTPRoute` CRD and a compatible Gateway
-controller installed. Ingress and HTTPRoute can be enabled independently or
-together.
+controller installed.
 
 ## Install
 
@@ -98,5 +97,5 @@ helm install files oci://ghcr.io/OWNER/services/charts/file-server \
   --set fileServer.oidc.clientId=file-server
 ```
 
-Configure ingress or Gateway TLS for the public origin. The chart's container
+Configure Gateway TLS for the public origin. The chart's container
 listens on `0.0.0.0:8080` and the Service exposes port 8080.
