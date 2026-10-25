@@ -51,11 +51,7 @@ jobs:
           push_output="$(helm push "${CHART_PATH}" "oci://${REGISTRY}")"
           printf '%s\n' "${push_output}"
 
-          digest="$(awk '$1 == "Digest:" { print $2 }' <<< "${push_output}")"
-          if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            echo "::error::Helm did not return a valid chart digest"
-            exit 1
-          fi
+          digest="$(grep -oE 'sha256:[[:xdigit:]]{64}' <<< "${push_output}")"
 
           echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
 
