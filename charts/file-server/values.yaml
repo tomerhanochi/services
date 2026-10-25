@@ -1,0 +1,74 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/tomerhanochi/services/file-server
+  pullPolicy: IfNotPresent
+  tag: latest
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  fsGroup: 65532
+  fsGroupChangePolicy: OnRootMismatch
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+
+service:
+  type: ClusterIP
+  port: 8080
+
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs: []
+  hostnames: []
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+fileServer:
+  listen: 0.0.0.0:8080
+  publicUrl: https://files.example.com
+  postgresql:
+    maxConnections: 10
+    secretKeyRef:
+      name: file-server-postgres
+      key: url
+  oidc:
+    issuer: https://identity.example.com
+    clientId: file-server
+    secretKeyRef:
+      name: file-server-oauth
+      key: client-secret
+    scopes:
+      - email
+      - profile
+    sessionTtlSecs: 3600
+    loginTtlSecs: 600
+    cookieName: __Host-oidc-session
+    successPath: /
+  mounts:
+    - name: documents
+      persistentVolumeClaimName: file-server-documents
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

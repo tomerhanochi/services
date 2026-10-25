@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "file-server.fullname" . }}-config
+  labels:
+    {{- include "file-server.labels" . | nindent 4 }}
+data:
+  config.toml: |
+    listen = {{ .Values.fileServer.listen | quote }}
+    public_url = {{ .Values.fileServer.publicUrl | quote }}
+
+    [database]
+    max_connections = {{ .Values.fileServer.postgresql.maxConnections }}
+
+    [auth.oidc]
+    issuer = {{ .Values.fileServer.oidc.issuer | quote }}
+    client_id = {{ .Values.fileServer.oidc.clientId | quote }}
+    redirect_uri = {{ printf "%s/auth/callback" (trimSuffix "/" .Values.fileServer.publicUrl) | quote }}
+    scopes = {{ .Values.fileServer.oidc.scopes | toJson }}
+    session_ttl_secs = {{ .Values.fileServer.oidc.sessionTtlSecs }}
+    login_ttl_secs = {{ .Values.fileServer.oidc.loginTtlSecs }}
+    cookie_name = {{ .Values.fileServer.oidc.cookieName | quote }}
+    success_path = {{ .Values.fileServer.oidc.successPath | quote }}
+
+    {{- range .Values.fileServer.mounts }}
+    [[mounts]]
+    name = {{ .name | quote }}
+    path = {{ include "file-server.mountPath" .name | quote }}
+    {{- end }}

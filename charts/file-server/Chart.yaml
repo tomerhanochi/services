@@ -1,0 +1,14 @@
+apiVersion: v2
+name: file-server
+version: 0.1.0
+description: Self-hosted file browser with PostgreSQL-backed access and OIDC authentication.
+type: application
+sources:
+  - https://github.com/tomerhanochi/services
+maintainers:
+  - name: Tomer Hanochi
+    email: contact@tomerhanochi.com
+    url: https://tomerhanochi.com
+icon: >-
+  data:image/svg+xml;PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjZTNlM2UzIj48cGF0aCBkPSJNMTYwLTE2MHEtMzMgMC01Ni41LTIzLjVUODAtMjQwdi00ODBxMC0zMyAyMy41LTU2LjVUMTYwLTgwMGgyNDBsODAgODBoMzIwcTMzIDAgNTYuNSAyMy41VDg4MC02NDB2NDAwcTAgMzMtMjMuNSA1Ni41VDgwMC0xNjBIMTYwWm0wLTgwaDY0MHYtNDAwSDQ0N2wtODAtODBIMTYwdjQ4MFptMCAwdi00ODAgNDgwWiIvPjwvc3ZnPg==
+appVersion: "0.1.0"
