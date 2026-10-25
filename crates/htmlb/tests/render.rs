@@ -70,7 +70,7 @@ fn escaping() {
     );
     check!(p().child('<'), "<p>&#60;</p>");
     check!(
-        script().child("if (a < b && c) {}"),
+        constructors::script().child("if (a < b && c) {}"),
         "<script>if (a < b && c) {}</script>"
     );
     check!(div().child(raw("<b>bold</b>")), "<div><b>bold</b></div>");

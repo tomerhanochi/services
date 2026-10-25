@@ -57,7 +57,7 @@
 //! ```
 //! ```compile_fail
 //! use htmlb::prelude::*;
-//! let _ = script().child(div()); // <script> holds raw text only
+//! let _ = constructors::script().child(div()); // <script> holds raw text only
 //! ```
 //! ```compile_fail
 //! use htmlb::prelude::*;

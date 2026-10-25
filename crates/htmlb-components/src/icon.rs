@@ -180,7 +180,7 @@ pub mod __private {
 #[cfg(test)]
 mod tests {
     use super::Icon;
-    use htmlb::prelude::IntoHtml;
+    use htmlb::prelude::{IntoHtml, RunTimeHtmlSizeHint};
 
     crate::icons! {
         enum Icons { MoreVert, ArrowBack, Draft }

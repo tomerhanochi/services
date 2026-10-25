@@ -82,6 +82,8 @@ impl RunTimeHtmlSizeHint for Size {
 
 #[cfg(test)]
 mod tests {
+    use htmlb::prelude::CompileTimeHtmlSizeHint;
+
     use super::*;
 
     #[test]

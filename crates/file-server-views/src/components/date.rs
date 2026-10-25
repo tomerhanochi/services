@@ -49,6 +49,8 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 mod tests {
     use std::time::Duration;
 
+    use htmlb::prelude::CompileTimeHtmlSizeHint;
+
     use super::*;
 
     #[test]
