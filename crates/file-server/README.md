@@ -8,22 +8,20 @@ Rustls. There is no Turso or unit-of-work dependency.
 
 ## Run locally
 
-Install Rust, Just, and Docker, then run from the repository root. The live smoke
-test also uses Python 3:
+Install Rust, Just, and Docker, then configure either OIDC or an API token in
+the example TOML and run from the repository root. The live smoke test also uses Python 3:
 
 ```sh
 just postgres-up
-mkdir -p /tmp/file-server-local/users /tmp/file-server-local/documents
+mkdir -p /tmp/file-server-local/documents
 cp crates/file-server/file_server.example.toml /tmp/file-server-local/server.toml
-printf '%s' 'choose-a-password' | just hash-password > /tmp/file-server-local/users/alice
+# Edit /tmp/file-server-local/server.toml to enable OIDC or token authentication.
 just run /tmp/file-server-local/server.toml
 ```
 
-Open <http://localhost:8080> and choose **Sign in**. The browser prompts for Basic
-credentials: username `alice`, with the password you hashed. Put files in
-`/tmp/file-server-local/documents`. Only independently salted Argon2id hashes go
-in the users directory. HTTP Basic credentials are managed by the client; the
-logout route clears OIDC sessions, not browser-cached Basic credentials.
+Put files in `/tmp/file-server-local/documents`. OIDC enables the browser sign-in
+flow. API tokens authenticate requests directly and do not provide an interactive
+login flow.
 
 The example Compose database binds localhost port 15432 and uses development
 credentials. `just postgres-up 15434` overrides its published port. Run `just postgres-down` to stop it; its named volume retains data.
@@ -50,8 +48,8 @@ FILE_SERVER_PUBLIC_URL='https://files.example' \
 just run /path/to/server.toml
 ```
 
-Mount paths and static-auth directory paths are relative to the TOML file's
-parent directory. `public_url` must be an HTTP(S) origin. Database URLs and OIDC
+Mount paths are relative to the TOML file's parent directory. `public_url` must
+be an HTTP(S) origin. Database URLs and OIDC
 client secrets are redacted from config Debug output. Unknown configuration
 fields, duplicate mounts, and dangling role/mount references fail during parsing.
 
@@ -61,8 +59,7 @@ can also rename and move. Unlisted principals receive no grants. User and machin
 IDs occupy separate namespaces. On startup, config-owned role memberships and
 grants are replaced atomically in PostgreSQL; token records are left intact.
 
-`[auth.static]` selects an Argon2id hash directory. Optional `[auth.oidc]` contains
-provider settings and explicit subject-to-local-user mappings. The verified
+Optional `[auth.oidc]` contains provider settings and explicit subject-to-local-user mappings. The verified
 issuer and subject identify the mapping; email and provider roles are not used
 as local account IDs. Optional `[auth.token]` specifies the PostgreSQL token-store
 connection. See [file-server-authn](../file-server-authn/README.md) for the exact
@@ -136,8 +133,9 @@ just profile-debug /tmp/file-server-local/server.toml
 
 Make requests in the browser, then press Ctrl-C for a report with p50/p95/p99
 function timings, SQL, routes, I/O and async-future activity. The authenticated
-request path includes credential extraction, account lookup, Argon2 verification,
-access queries, filesystem operations, page construction, and HTML serialization.
+request path includes credential extraction, token digest lookup or OIDC session
+verification, access queries, filesystem operations, page construction, and HTML
+serialization.
 OIDC discovery and login operations have function timings. SQLx tracing is
 installed separately from the console log filter, so `RUST_LOG=info` still captures
 SQL query timings and their function/route attribution.
@@ -178,18 +176,17 @@ Interpret measurements with these boundaries:
   as the streaming body is consumed; it is not part of the response-head duration.
 - Async function times include waiting and nested calls. Do not add them together
   to calculate request latency.
-- `StaticVerifier::verify` includes blocking-pool waiting and Argon2 execution.
-  `PasswordHash::verify` measures hashing on the worker itself. Spawned workers
-  have no route scope, so use the global function panel to inspect their timings
-  and allocations. Route allocation metrics exclude that worker's allocations.
+- Bearer-token verification includes the database lookup. OIDC session checks
+  are process-local. Compare function and route timings with SQL metrics to
+  separate database wait from the rest of request processing.
 - Annotations do not log arguments or return values. Routes use templates and
-  SQL uses bound parameters; filenames, credentials and hashes are not metric labels.
-- Debug builds can make Argon2 substantially slower. Compare `profile-debug`
-  with `profile` before attributing development response times to the database.
+  SQL uses bound parameters; filenames, identities and credentials are not metric labels.
+- Compare `profile-debug` with `profile` before attributing development response
+  times to the database.
 
 `just check-profile` checks all profiling code. `just test-profile-postgres`
 runs the full suite against disposable Docker PostgreSQL, then verifies live
-route, SQL, hashing, I/O, allocation and Tokio metrics, exporter authentication,
+route, SQL, token, I/O, allocation and Tokio metrics, exporter authentication,
 and JSON report generation during the binary smoke test.
 
 Release timing and allocation measurements, memory observations, and a reproducible

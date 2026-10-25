@@ -3,7 +3,7 @@ use authn::prelude::{AuthOutcome, Authenticate};
 use authn_identity::prelude::Identity;
 use axum::{
     extract::{FromRequestParts, State},
-    http::{StatusCode, header, request::Parts},
+    http::{StatusCode, request::Parts},
     response::{IntoResponse, Redirect, Response},
 };
 
@@ -34,15 +34,7 @@ pub(crate) async fn login<P: Ports>(
     if state.oidc_enabled {
         return Redirect::to("/auth/login").into_response();
     }
-    (
-        StatusCode::UNAUTHORIZED,
-        [(
-            header::WWW_AUTHENTICATE,
-            r#"Basic realm="Files", charset="UTF-8""#,
-        )],
-        "Authentication required",
-    )
-        .into_response()
+    (StatusCode::UNAUTHORIZED, "Authentication required").into_response()
 }
 #[hotpath::measure(future = true)]
 pub(crate) async fn logout<P: Ports>(State(state): State<AppState<P>>) -> Response {

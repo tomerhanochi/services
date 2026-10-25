@@ -1,8 +1,9 @@
 # Release request timing and memory measurements
 
-Measured 2026-10-16 on this macOS ARM64 development machine, using local
-filesystem fixtures and PostgreSQL 18 in a disposable Docker container. The
-application source is commit `be4dcd3`; no application behavior was changed.
+Historical measurements from 2026-10-16 on this macOS ARM64 development machine,
+using local filesystem fixtures and PostgreSQL 18 in a disposable Docker
+container. The measured revision used static Basic credentials, which have since
+been removed; these numbers do not describe current authentication performance.
 
 Each scenario has 3 warm-up requests and 60 measured requests. Requests use
 HTTP keep-alive and accept gzip. Scenarios run in the order below in one server
@@ -83,17 +84,18 @@ they are not simultaneously live memory. Route metrics exclude spawned workers.
   Its RSS after the large listing was 167.7 MiB, versus 261.0 MiB after the
   60-sample listing. Retained memory warrants a longer steady-state study.
 
-## Implication for the reported 268 ms
+## Historical implication for the reported 268 ms
 
 `just run` invokes plain `cargo run`, which uses the unoptimized development
 build. These release runs did not reproduce 268 ms. Development-build overhead
 in CPU-heavy password hashing is plausible, but was not measured because only
 release builds were requested.
 
-The next useful optimization targets are avoiding repeated password hashing
-through an authenticated session design, reducing serial per-entry filesystem
-work, and reducing HTML buffer growth/markup volume. Do not weaken the password
-hash parameters merely to reduce request latency.
+The next useful optimization targets for that revision were avoiding repeated
+password hashing through an authenticated session design, reducing serial
+per-entry filesystem work, and reducing HTML buffer growth/markup volume. The
+authentication recommendations here no longer apply after static credentials
+were removed.
 
 ## Reproduce
 

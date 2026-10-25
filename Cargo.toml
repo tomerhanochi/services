@@ -15,7 +15,6 @@ serde = { version = "1", features = ["derive"] }
 base64 = "0.22"
 sha2 = "0.10"
 subtle = "2.6"
-argon2 = { version = "0.5.3", features = ["std"] }
 sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "json", "migrate", "macros"] }
 thiserror = "2"
 hotpath = "0.28.6"

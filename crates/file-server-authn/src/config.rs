@@ -1,20 +1,13 @@
 use authn_identity::prelude::UserId;
 use serde::Deserialize;
-use std::{collections::BTreeMap, fmt, num::NonZeroU32, path::PathBuf};
+use std::{collections::BTreeMap, fmt, num::NonZeroU32};
 
 /// Only serializable deployment inputs; setup creates all runtime resources.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AuthConfig {
-    pub r#static: Option<StaticAuthConfig>,
     pub oidc: Option<OidcAuthConfig>,
     pub token: Option<TokenAuthConfig>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct StaticAuthConfig {
-    pub directory: PathBuf,
 }
 
 #[derive(Clone, Deserialize)]

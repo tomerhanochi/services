@@ -8,14 +8,6 @@ use http_body_util::BodyExt;
 use std::fs;
 use tower::ServiceExt;
 
-fn hash(password: &str) -> String {
-    use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
-    let salt = SaltString::encode_b64(b"test-salt-16bytes").unwrap();
-    Argon2::default()
-        .hash_password(password.as_bytes(), &salt)
-        .unwrap()
-        .to_string()
-}
 fn request(method: &str, uri: &str, auth: Option<&str>, body: &str) -> Request<Body> {
     let mut request = Request::builder()
         .method(method)
@@ -43,11 +35,8 @@ async fn text(response: axum::response::Response) -> String {
 #[ignore = "requires TEST_DATABASE_URL pointing to a disposable PostgreSQL database"]
 async fn configured_server_browses_downloads_renames_moves_and_enforces_access() {
     let directory = tempfile::tempdir().unwrap();
-    fs::create_dir(directory.path().join("users")).unwrap();
     fs::create_dir(directory.path().join("documents")).unwrap();
     fs::create_dir(directory.path().join("documents/folder")).unwrap();
-    fs::write(directory.path().join("users/alice"), hash("password")).unwrap();
-    fs::write(directory.path().join("users/bob"), hash("password")).unwrap();
     fs::write(directory.path().join("documents/a.txt"), "hello world").unwrap();
     fs::write(directory.path().join("documents/existing.txt"), "keep me").unwrap();
     fs::write(directory.path().join("documents/<unsafe>.txt"), "escaped").unwrap();
@@ -67,9 +56,38 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
     .unwrap();
     let config = Config::load(&config_path).unwrap();
     let app = Server::new(config).await.unwrap().router();
-    // base64("alice:password") and base64("bob:password")
-    let alice = "Basic YWxpY2U6cGFzc3dvcmQ=";
-    let bob = "Basic Ym9iOnBhc3N3b3Jk";
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let alice_token = authn_token::prelude::Token::generate().unwrap();
+    let bob_token = authn_token::prelude::Token::generate().unwrap();
+    for (token, identity) in [
+        (
+            &alice_token,
+            authn_identity::prelude::Identity::User(authn_identity::prelude::User {
+                id: authn_identity::prelude::UserId::new("alice").unwrap(),
+            }),
+        ),
+        (
+            &bob_token,
+            authn_identity::prelude::Identity::User(authn_identity::prelude::User {
+                id: authn_identity::prelude::UserId::new("bob").unwrap(),
+            }),
+        ),
+    ] {
+        sqlx::query("INSERT INTO authn_api_tokens (digest, identity) VALUES ($1, $2)")
+            .bind(token.digest().0.as_slice())
+            .bind(sqlx::types::Json(identity))
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
+    let alice = format!(
+        "Bearer {}",
+        std::str::from_utf8(alice_token.expose_secret()).unwrap()
+    );
+    let bob = format!(
+        "Bearer {}",
+        std::str::from_utf8(bob_token.expose_secret()).unwrap()
+    );
 
     let health = app
         .clone()
@@ -89,17 +107,16 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .await
         .unwrap();
     assert_eq!(login.status(), StatusCode::UNAUTHORIZED);
-    assert!(login.headers().contains_key(header::WWW_AUTHENTICATE));
     let home = app
         .clone()
-        .oneshot(request("GET", "/", Some(alice), ""))
+        .oneshot(request("GET", "/", Some(&alice), ""))
         .await
         .unwrap();
     assert_eq!(home.status(), StatusCode::OK);
     assert!(text(home).await.contains("documents"));
     let listing = app
         .clone()
-        .oneshot(request("GET", "/m/documents/", Some(bob), ""))
+        .oneshot(request("GET", "/m/documents/", Some(&bob), ""))
         .await
         .unwrap();
     assert_eq!(listing.status(), StatusCode::OK);
@@ -109,20 +126,20 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
     assert!(!body.contains("<unsafe>"));
     let file = app
         .clone()
-        .oneshot(request("GET", "/m/documents/a.txt", Some(bob), ""))
+        .oneshot(request("GET", "/m/documents/a.txt", Some(&bob), ""))
         .await
         .unwrap();
     assert_eq!(file.status(), StatusCode::OK);
     assert_eq!(text(file).await, "hello world");
     let no_actions = app
         .clone()
-        .oneshot(request("GET", "/actions/documents/a.txt", Some(bob), ""))
+        .oneshot(request("GET", "/actions/documents/a.txt", Some(&bob), ""))
         .await
         .unwrap();
     assert_eq!(no_actions.status(), StatusCode::FORBIDDEN);
     let actions = app
         .clone()
-        .oneshot(request("GET", "/actions/documents/a.txt", Some(alice), ""))
+        .oneshot(request("GET", "/actions/documents/a.txt", Some(&alice), ""))
         .await
         .unwrap();
     assert_eq!(actions.status(), StatusCode::OK);
@@ -134,7 +151,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .oneshot(request(
             "POST",
             "/rename/documents/a.txt",
-            Some(bob),
+            Some(&bob),
             "name=b.txt",
         ))
         .await
@@ -145,7 +162,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .oneshot(request(
             "POST",
             "/rename/documents/a.txt",
-            Some(alice),
+            Some(&alice),
             "name=existing.txt",
         ))
         .await
@@ -160,7 +177,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .oneshot(request(
             "POST",
             "/rename/documents/a.txt",
-            Some(alice),
+            Some(&alice),
             "name=b.txt",
         ))
         .await
@@ -171,7 +188,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .oneshot(request(
             "POST",
             "/move/documents/b.txt",
-            Some(alice),
+            Some(&alice),
             "to=folder",
         ))
         .await
@@ -183,7 +200,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
     );
     let selecting = app
         .clone()
-        .oneshot(request("GET", "/m/documents/?select", Some(alice), ""))
+        .oneshot(request("GET", "/m/documents/?select", Some(&alice), ""))
         .await
         .unwrap();
     assert_eq!(selecting.status(), StatusCode::OK);
@@ -192,7 +209,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
     assert!(body.contains(r#"action="/move-many/documents""#));
     let viewer_selecting = app
         .clone()
-        .oneshot(request("GET", "/m/documents/?select", Some(bob), ""))
+        .oneshot(request("GET", "/m/documents/?select", Some(&bob), ""))
         .await
         .unwrap();
     assert!(!text(viewer_selecting).await.contains("md-checkbox"));
@@ -201,7 +218,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .oneshot(request(
             "POST",
             "/move-many/documents?item=c.txt",
-            Some(bob),
+            Some(&bob),
             "to=folder",
         ))
         .await
@@ -212,7 +229,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .oneshot(request(
             "POST",
             "/move-many/documents?item=c.txt&item=%3Cunsafe%3E.txt",
-            Some(alice),
+            Some(&alice),
             "to=folder",
         ))
         .await
@@ -236,7 +253,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .oneshot(request(
             "POST",
             "/move-many/documents?item=d.txt&item=e.txt",
-            Some(alice),
+            Some(&alice),
             "to=folder",
         ))
         .await
@@ -263,7 +280,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .oneshot(request(
             "GET",
             &format!("/move-many/documents?{too_many}"),
-            Some(alice),
+            Some(&alice),
             "",
         ))
         .await
@@ -274,7 +291,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .oneshot(request(
             "GET",
             "/m/documents/%2E%2E/secret",
-            Some(alice),
+            Some(&alice),
             "",
         ))
         .await
@@ -283,7 +300,7 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
     let cross_site = Request::builder()
         .method("POST")
         .uri("/rename/documents/existing.txt")
-        .header(header::AUTHORIZATION, alice)
+        .header(header::AUTHORIZATION, alice.as_str())
         .header(header::ORIGIN, "https://attacker.example")
         .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from("name=oops"))
@@ -305,7 +322,6 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
     assert!(text(css).await.contains("--md-sys-color-primary"));
     // A database-backed machine token goes through the same file authorization path.
     let token = authn_token::prelude::Token::generate().unwrap();
-    let pool = sqlx::PgPool::connect(&url).await.unwrap();
     let identity = authn_identity::prelude::Identity::Machine(authn_identity::prelude::Machine {
         id: authn_identity::prelude::MachineId::new("backup").unwrap(),
     });
@@ -358,11 +374,18 @@ async fn configured_server_browses_downloads_renames_moves_and_enforces_access()
         .execute(&pool)
         .await
         .unwrap();
+    for token in [&alice_token, &bob_token] {
+        sqlx::query("DELETE FROM authn_api_tokens WHERE digest = $1")
+            .bind(token.digest().0.as_slice())
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
     let invalid = app
         .oneshot(request(
             "GET",
             "/m/documents/",
-            Some("Basic YWxpY2U6d3Jvbmc="),
+            Some("Bearer invalid-token"),
             "",
         ))
         .await

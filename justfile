@@ -4,7 +4,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 default:
     @just --list
 
-# Build the working binary and provisioning helpers.
+# Build the working binary and examples.
 build:
     cargo build -p file-server --bins --examples
 
@@ -50,10 +50,6 @@ test-profile:
 test-profile-postgres port="15434":
     SMOKE_HOTPATH=1 just test-postgres {{ quote(port) }}
 
-# Read a password from stdin and print only its independently salted Argon2id hash.
-hash-password:
-    @cargo run --quiet -p file-server --example hash_password
-
 fmt:
     cargo fmt --all
 
@@ -81,6 +77,7 @@ test-postgres port="15433":
     #!/usr/bin/env bash
     set -euo pipefail
     project="file-server-test-$$"
+    export COMPOSE_PROJECT_NAME="$project"
     export PGPORT={{ quote(port) }}
     compose=(docker compose --project-name "$project" --file crates/file-server/compose.yaml)
     cleanup() { "${compose[@]}" down --volumes >/dev/null; }
@@ -101,11 +98,12 @@ test-postgres port="15433":
 smoke:
     #!/usr/bin/env python3
     """Smoke-test the built binary using a disposable TEST_DATABASE_URL."""
-    import base64
+    import hashlib
     import json
     import os
     from pathlib import Path
     import signal
+    import secrets
     import socket
     import subprocess
     import tempfile
@@ -120,13 +118,10 @@ smoke:
     target = Path(metadata["target_directory"]) / os.environ.get("SMOKE_BUILD_PROFILE", "debug")
     with tempfile.TemporaryDirectory(prefix="file-server-smoke-") as temporary:
         directory = Path(temporary)
-        (directory / "users").mkdir()
         (directory / "documents").mkdir()
         (directory / "documents/example.txt").write_text("file-server smoke test\n")
-        encoded = subprocess.check_output(
-            [str(target / "examples/hash_password")], input=b"smoke-password\n")
-        (directory / "users/alice").write_bytes(encoded)
         example = (root / "crates/file-server/file_server.example.toml").read_text()
+        example += f"\n[auth.token]\ndatabase_url = {os.environ['TEST_DATABASE_URL']!r}\n"
         # The invalid file value must be overridden by the environment.
         example = example.replace(
             "postgres://file_server:development-only@localhost:15432/file_server",
@@ -157,7 +152,6 @@ smoke:
                 "HOTPATH_OUTPUT_PATH": str(directory / "profile.json"),
             })
         base = f"http://127.0.0.1:{port}"
-        authorization = "Basic " + base64.b64encode(b"alice:smoke-password").decode()
         with (directory / "server.log").open("w+") as log:
             process = subprocess.Popen([str(target / "file-server")], env=environment,
                                        stdout=log, stderr=subprocess.STDOUT)
@@ -174,6 +168,15 @@ smoke:
                         time.sleep(0.1)
                 else:
                     raise RuntimeError("binary did not become ready")
+                token = "smoke-" + secrets.token_urlsafe(32)
+                digest = hashlib.sha256(token.encode()).hexdigest()
+                sql = ("INSERT INTO authn_api_tokens (digest, identity) VALUES "
+                       f"(decode('{digest}', 'hex'), '{{\"User\":{{\"id\":\"alice\"}}}}'::jsonb)")
+                subprocess.check_call([
+                    "docker", "compose", "--file", "crates/file-server/compose.yaml",
+                    "exec", "-T", "postgres", "psql", "-U", "file_server", "-d", "file_server", "-c", sql,
+                ], cwd=root, stdout=subprocess.DEVNULL)
+                authorization = "Bearer " + token
                 def get(path):
                     request = urllib.request.Request(base + path,
                                                      headers={"Authorization": authorization})
@@ -199,13 +202,13 @@ smoke:
                             metrics = response.read().decode()
                         if all(name in metrics for name in [
                             "hotpath_server_sql_calls_total", "hotpath_io_bytes_total",
-                            "PasswordHash::verify", "PostgresAccess::capabilities",
+                            "TokenVerifier::verify", "PostgresAccess::capabilities",
                             "hotpath_function_alloc_bytes_total", "hotpath_tokio_workers",
                         ]):
                             break
                         time.sleep(0.1)
                     else:
-                        raise AssertionError("Expected route, SQL, hash, I/O, allocation and runtime telemetry")
+                        raise AssertionError("Expected route, SQL, token, I/O, allocation and runtime telemetry")
                     assert 'route="GET /m/{mount}/"' in metrics
                     sql_counts = [line for line in metrics.splitlines()
                                   if line.startswith("hotpath_server_sql_calls_total{")
@@ -215,21 +218,20 @@ smoke:
                                and 'route="GET /m/{mount}/"' in line
                                and "PostgresAccess::capabilities" in line
                                for line in metrics.splitlines())
-                    assert "smoke-password" not in metrics and "$argon2id$" not in metrics
                     try:
                         urllib.request.urlopen(f"http://127.0.0.1:{metrics_port}/metrics", timeout=5)
                     except urllib.error.HTTPError as error:
                         assert error.code == 401
                     else:
                         raise AssertionError("Exporter accepted an unauthenticated scrape")
-                    print("Profiling smoke test passed: route, SQL, Argon2, I/O, allocations, runtime, exporter auth.")
+                    print("Profiling smoke test passed: route, SQL, token auth, I/O, allocations, runtime, exporter auth.")
                 process.send_signal(signal.SIGTERM)
                 assert process.wait(timeout=10) == 0
                 if profiling:
                     report = json.loads((directory / "profile.json").read_text())
                     assert report
                     print("Profiling JSON report flushed on graceful shutdown.")
-                print("Binary smoke test passed: env-over-TOML config, health, Basic auth, listing, download, rename, graceful shutdown.")
+                print("Binary smoke test passed: env-over-TOML config, health, bearer auth, listing, download, rename, graceful shutdown.")
             finally:
                 if process.poll() is None:
                     process.terminate()
@@ -244,6 +246,7 @@ measure-release output="/tmp/file-server-measurement" samples="30" port="15435":
     #!/usr/bin/env bash
     set -euo pipefail
     project="file-server-measure-$$"
+    export COMPOSE_PROJECT_NAME="$project"
     export PGPORT={{ quote(port) }}
     compose=(docker compose --project-name "$project" --file crates/file-server/compose.yaml)
     trap '"${compose[@]}" down --volumes >/dev/null' EXIT
@@ -259,7 +262,7 @@ measure-release output="/tmp/file-server-measurement" samples="30" port="15435":
 [private]
 _measure-release output samples:
     #!/usr/bin/env python3
-    import base64
+    import hashlib
     import http.client
     import concurrent.futures
     import gzip
@@ -270,6 +273,7 @@ _measure-release output samples:
     from pathlib import Path
     import re
     import signal
+    import secrets
     import socket
     import statistics
     import subprocess
@@ -314,7 +318,6 @@ _measure-release output samples:
                 "p95_ms": ordered[math.ceil(len(ordered) * .95) - 1]}
     with tempfile.TemporaryDirectory(prefix="file-server-measure-") as temporary:
         fixture = Path(temporary)
-        (fixture / "users").mkdir()
         documents = fixture / "documents"
         documents.mkdir()
         for count in (1, 100, 1000):
@@ -323,9 +326,8 @@ _measure-release output samples:
             for i in range(count):
                 (directory / f"entry-{i:04}.txt").write_text("measurement fixture\n")
         (documents / "download.bin").write_bytes(b"x" * (1024 * 1024))
-        encoded = subprocess.check_output([str(target / "examples/hash_password")], input=b"measurement-password\n")
-        (fixture / "users/alice").write_bytes(encoded)
         config = Path("crates/file-server/file_server.example.toml").read_text()
+        config += f"\n[auth.token]\ndatabase_url = {os.environ['TEST_DATABASE_URL']!r}\n"
         (fixture / "server.toml").write_text(config)
         environment = {k: v for k, v in os.environ.items()
                        if not k.startswith(("FILE_SERVER_", "HOTPATH_"))}
@@ -338,9 +340,8 @@ _measure-release output samples:
             "HOTPATH_OUTPUT_PATH": str(output / "hotpath.json"),
             "RUST_LOG": "info",
         })
-        authorization = "Basic " + base64.b64encode(b"alice:measurement-password").decode()
         results = {"build": "release", "allocation_tracking": profiling, "samples_per_scenario": samples,
-                   "password_hash_parameters": encoded.decode().split("$")[3], "scenarios": []}
+                   "authentication": "database-backed API token", "scenarios": []}
         with (output / "server.log").open("w+") as log:
             process = subprocess.Popen([str(target / "file-server"), str(fixture / "server.toml")],
                                        env=environment, stdout=log, stderr=subprocess.STDOUT)
@@ -357,6 +358,15 @@ _measure-release output samples:
                         time.sleep(.1)
                 else:
                     raise RuntimeError("Server not ready")
+                token = "measure-" + secrets.token_urlsafe(32)
+                digest = hashlib.sha256(token.encode()).hexdigest()
+                sql = ("INSERT INTO authn_api_tokens (digest, identity) VALUES "
+                       f"(decode('{digest}', 'hex'), '{{\"User\":{{\"id\":\"alice\"}}}}'::jsonb)")
+                subprocess.check_call([
+                    "docker", "compose", "--file", "crates/file-server/compose.yaml",
+                    "exec", "-T", "postgres", "psql", "-U", "file_server", "-d", "file_server", "-c", sql,
+                ], stdout=subprocess.DEVNULL)
+                authorization = "Bearer " + token
                 time.sleep(.5)
                 initial, _ = metrics()
                 results["startup_rss_bytes"] = value(initial, "hotpath_rss_bytes")

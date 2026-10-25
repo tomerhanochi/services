@@ -1,4 +1,4 @@
-//! Authentication composition for a file server: break-glass Basic, OIDC cookie, API bearer.
+//! Authentication composition for a file server: OIDC cookie and API bearer.
 
 mod authenticator;
 mod config;
@@ -7,10 +7,8 @@ mod setup;
 mod token_store;
 
 pub mod prelude {
-    pub use crate::authenticator::{
-        AppAuthenticator, OidcAuthenticator, StaticAuthenticator, TokenAuthenticator,
-    };
-    pub use crate::config::{AuthConfig, OidcAuthConfig, StaticAuthConfig, TokenAuthConfig};
+    pub use crate::authenticator::{AppAuthenticator, OidcAuthenticator, TokenAuthenticator};
+    pub use crate::config::{AuthConfig, OidcAuthConfig, TokenAuthConfig};
     pub use crate::error::BuildError;
     pub use crate::setup::{AuthSetup, configure};
     pub use crate::token_store::PostgresTokens;

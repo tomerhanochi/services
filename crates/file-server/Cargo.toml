@@ -25,11 +25,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2"
 
 [dev-dependencies]
-argon2 = { workspace = true }
-rand = "0.8"
+tempfile = "3"
 sqlx = { workspace = true }
 authn-token = { path = "../authn-token" }
-tempfile = "3"
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 serde_json = "1"

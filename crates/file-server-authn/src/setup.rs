@@ -5,9 +5,6 @@ use authn_oidc::prelude::{
     Sessions,
 };
 use authn_oidc_axum::prelude::{CookieSettings, OidcHttp, SuccessPath};
-use authn_static::prelude::StaticVerifier;
-use authn_static_axum::prelude::BasicAuthExtractor;
-use authn_static_directory::prelude::DirectoryStore;
 use authn_token::prelude::TokenVerifier;
 use authn_token_axum::prelude::BearerTokenExtractor;
 use axum::Router;
@@ -28,15 +25,9 @@ impl AuthSetup {
 /// Constructs stores, sessions, discovery clients and request authentication from config values.
 #[hotpath::measure(future = true)]
 pub async fn configure(config: &AuthConfig) -> Result<AuthSetup, BuildError> {
-    if config.r#static.is_none() && config.oidc.is_none() && config.token.is_none() {
+    if config.oidc.is_none() && config.token.is_none() {
         return Err(BuildError::NoMechanisms);
     }
-    let static_auth = config.r#static.as_ref().map(|config| {
-        Authenticator::new(
-            BasicAuthExtractor,
-            StaticVerifier::new(DirectoryStore::new(config.directory.clone())),
-        )
-    });
     let (oidc_auth, oidc) = if let Some(config) = &config.oidc {
         let mut client_config =
             OidcConfig::new(&config.issuer, &config.client_id, &config.redirect_uri)?;
@@ -72,7 +63,7 @@ pub async fn configure(config: &AuthConfig) -> Result<AuthSetup, BuildError> {
         None => None,
     };
     Ok(AuthSetup {
-        authenticator: (static_auth, oidc_auth, token),
+        authenticator: (oidc_auth, token),
         oidc,
     })
 }

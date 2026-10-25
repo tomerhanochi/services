@@ -5,8 +5,9 @@ use file_server_authn::prelude::*;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = AuthConfig {
-        r#static: Some(StaticAuthConfig {
-            directory: std::env::var("STATIC_AUTH_DIRECTORY")?.into(),
+        token: Some(TokenAuthConfig {
+            database_url: std::env::var("DATABASE_URL")?,
+            max_connections: std::num::NonZeroU32::new(5).unwrap(),
         }),
         ..Default::default()
     };
