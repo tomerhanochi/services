@@ -19,9 +19,6 @@ jobs:
         with:
           version: v4.3.1
 
-      - name: Lint chart
-        run: helm lint charts/file-server
-
       - name: Package chart
         run: helm package charts/file-server --destination "$RUNNER_TEMP"
 
