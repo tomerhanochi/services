@@ -2,7 +2,7 @@
 
 use std::fmt::Write;
 
-use crate::Theme;
+use crate::prelude::Theme;
 
 const CSS: &str = include_str!("material.css");
 

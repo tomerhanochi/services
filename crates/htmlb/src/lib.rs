@@ -84,42 +84,21 @@ mod components;
 mod containers;
 mod elements;
 mod escape;
+mod into_html;
 mod num;
 mod size_hint;
 mod text;
 
-pub use attrs::{
-    Attr, AttrKey, AttrValue, Attribute, BoolAttr, DynAttr, Typed, enums::*, keys as attr,
-};
-pub use class::{ClassList, Classes};
-pub use component::Component;
-pub use components::{color_scheme, favicon, script, stylesheet, viewport};
-pub use containers::{ClonedIterHtml, Either, IterHtml, IteratorExt};
-pub use elements::{Child, El, HasChildren, Kind, Tag, Unescaped, kind, tag, *};
-pub use size_hint::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
-pub use text::{Display, Doctype, Raw, RawStr, display, doctype, raw};
-
 pub mod prelude {
-    pub use crate::{
-        CompileTimeHtmlSizeHint, Either, IntoHtml, IteratorExt, RunTimeHtmlSizeHint,
-        attrs::enums::*, display, doctype, elements::constructors::*, raw,
+    pub use crate::attrs::{
+        Attr, AttrKey, AttrValue, Attribute, BoolAttr, DynAttr, Typed, enums::*, keys as attr,
     };
-}
-
-/// Anything that can be rendered as HTML: elements, text, numbers, and containers of them.
-#[diagnostic::on_unimplemented(message = "`{Self}` can't be rendered as HTML")]
-pub trait IntoHtml: CompileTimeHtmlSizeHint + RunTimeHtmlSizeHint + Sized {
-    /// Appends the HTML to `buf`. Does not reserve.
-    fn write_html(self, buf: &mut String);
-
-    /// Reserves [`SIZE_HINT`](CompileTimeHtmlSizeHint::SIZE_HINT) plus the runtime addition and
-    /// 1/8 headroom for escape expansion, then renders. To reuse a buffer, call
-    /// [`write_html`](Self::write_html).
-    #[hotpath::measure]
-    fn to_html(self) -> String {
-        let hint = Self::SIZE_HINT + self.size_hint();
-        let mut buf = String::with_capacity(hint + hint / 8);
-        self.write_html(&mut buf);
-        buf
-    }
+    pub use crate::class::{ClassList, Classes};
+    pub use crate::component::Component;
+    pub use crate::components::{color_scheme, favicon, script, stylesheet, viewport};
+    pub use crate::containers::{ClonedIterHtml, Either, IterHtml, IteratorExt};
+    pub use crate::elements::{Child, El, HasChildren, Kind, Tag, Unescaped, kind, tag, *};
+    pub use crate::into_html::IntoHtml;
+    pub use crate::size_hint::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
+    pub use crate::text::{Display, Doctype, Raw, RawStr, display, doctype, raw};
 }

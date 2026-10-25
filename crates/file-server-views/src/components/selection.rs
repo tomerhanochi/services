@@ -1,5 +1,6 @@
 use file_server_core::prelude::{Entry, Location};
 use htmlb::prelude::*;
+use htmlb_components::prelude::selection_bar as selection_bar_builder;
 use htmlb_components::prelude::*;
 
 use super::Details;
@@ -23,7 +24,7 @@ pub fn selectable_row(entry: &Entry) -> impl IntoHtml {
 /// The bar moving the [`selectable_row`]s checked in `at`, shown once one is.
 pub fn selection_bar(at: &Location) -> impl IntoHtml {
     // A GET form: the picker keeps the selection in its URL as the user browses.
-    htmlb_components::selection_bar().child(
+    selection_bar_builder().child(
         form()
             .id(SELECTION)
             .method(FormMethod::Get)

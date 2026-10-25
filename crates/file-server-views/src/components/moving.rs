@@ -83,7 +83,7 @@ pub fn move_here(moving: Moving, browsing: &Location) -> impl IntoHtml {
             input()
                 .r#type(InputType::Hidden)
                 .name("to")
-                .value(htmlb::display(&browsing.path)),
+                .value(htmlb::prelude::display(&browsing.path)),
             filled_button()
                 .label("Move here")
                 .icon(Icons::DriveFileMove)

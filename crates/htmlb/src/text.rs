@@ -1,12 +1,16 @@
 //! Leaf content: strings, chars, numbers, raw HTML, doctype.
 //!
 //! Strings and chars are escaped. (`<script>`/`<style>` children bypass this; see
-//! [`Unescaped`](crate::Unescaped).)
+//! [`Unescaped`](crate::prelude::Unescaped).)
 
 use std::borrow::Cow;
 use std::fmt;
 
-use crate::{CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint, escape, num};
+use crate::attrs::AttrValue;
+use crate::escape;
+use crate::into_html::IntoHtml;
+use crate::num;
+use crate::size_hint::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
 
 macro_rules! strings {
     ($([$($gen:tt)*] $ty:ty => |$s:ident| $as_str:expr;)*) => {$(
@@ -109,7 +113,7 @@ pub fn raw<S: AsRef<str>>(html: S) -> Raw<S> {
     Raw(html)
 }
 
-impl<S: AsRef<str>> crate::AttrValue for Raw<S> {
+impl<S: AsRef<str>> AttrValue for Raw<S> {
     #[inline]
     fn write_value(self, buf: &mut String) {
         buf.push_str(self.0.as_ref())
@@ -169,7 +173,7 @@ impl<T: fmt::Display> IntoHtml for Display<T> {
     }
 }
 
-impl<T: fmt::Display> crate::AttrValue for Display<T> {
+impl<T: fmt::Display> AttrValue for Display<T> {
     #[inline]
     fn write_value(self, buf: &mut String) {
         use fmt::Write;

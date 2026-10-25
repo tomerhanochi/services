@@ -1,8 +1,6 @@
 use htmlb::prelude::*;
-use htmlb::{Component, RunTimeHtmlSizeHint};
 
-use crate::ColorRole;
-use crate::Unset;
+use crate::prelude::{ColorRole, Unset};
 
 const SURFACE: &str = "md-surface";
 

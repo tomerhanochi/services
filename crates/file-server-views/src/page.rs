@@ -1,7 +1,5 @@
 use htmlb::prelude::*;
-use htmlb::{Component, RunTimeHtmlSizeHint, favicon, stylesheet};
-use htmlb_components::Unset;
-use htmlb_components::document;
+use htmlb_components::prelude::{Unset, document};
 
 use crate::icons::Icons;
 use crate::urls::Asset;

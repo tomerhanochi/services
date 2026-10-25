@@ -1,6 +1,5 @@
-use crate::Unset;
+use crate::prelude::Unset;
 use htmlb::prelude::*;
-use htmlb::{Component, RunTimeHtmlSizeHint};
 
 const LIST: &str = "md-list";
 

@@ -1,9 +1,8 @@
 use htmlb::prelude::*;
-use htmlb::{AttrValue, Component, RunTimeHtmlSizeHint};
 
-use crate::Unset;
 use crate::action::{Action, Actionable, Inert};
 use crate::icon::Icon;
+use crate::prelude::Unset;
 
 const ICON_BUTTON: &str = "md-icon-button";
 

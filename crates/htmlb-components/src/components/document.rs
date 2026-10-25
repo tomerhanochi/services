@@ -1,6 +1,5 @@
-use crate::Unset;
+use crate::prelude::Unset;
 use htmlb::prelude::*;
-use htmlb::{Component, RunTimeHtmlSizeHint, color_scheme, viewport};
 
 /// A whole page: the doctype, `<html lang="en">`, and a `<head>` that already declares the
 /// charset, viewport and color schemes. Give it the rest of the [`head`](Document::head)

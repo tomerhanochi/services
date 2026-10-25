@@ -12,7 +12,7 @@ use axum_extra::extract::Query as MultiQuery;
 use file_server_core::prelude::{EntryKind, EntryName, FilesError, Location, MountName, RelPath};
 use file_server_views::prelude::Href;
 use file_server_views::prelude::{self as views, Done, Moving};
-use htmlb::AttrValue;
+use htmlb::prelude::AttrValue;
 use serde::Deserialize;
 use tokio_util::io::ReaderStream;
 

@@ -1,6 +1,5 @@
-use crate::Unset;
+use crate::prelude::Unset;
 use htmlb::prelude::*;
-use htmlb::{Component, RunTimeHtmlSizeHint};
 
 const SCAFFOLD: &str = "md-scaffold";
 const SCAFFOLD_BODY: &str = "md-scaffold__body";

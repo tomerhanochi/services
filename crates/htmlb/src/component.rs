@@ -1,6 +1,7 @@
 //! Components: reusable views with their own builder API.
 
-use crate::{CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint};
+use crate::into_html::IntoHtml;
+use crate::size_hint::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
 
 /// A view with its own builder API, rendered by building ordinary nodes.
 ///
@@ -9,7 +10,6 @@ use crate::{CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint};
 ///
 /// ```
 /// use htmlb::prelude::*;
-/// use htmlb::Component;
 ///
 /// struct Chip<'a> { label: &'a str, selected: bool }
 ///

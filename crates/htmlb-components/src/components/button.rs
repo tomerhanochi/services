@@ -1,9 +1,8 @@
 use htmlb::prelude::*;
-use htmlb::{Component, RunTimeHtmlSizeHint};
 
-use crate::Unset;
 use crate::action::{Action, Actionable, Inert};
 use crate::icon::Icon;
+use crate::prelude::Unset;
 
 const BUTTON: &str = "md-button";
 const BUTTON_LABEL: &str = "md-button__label";

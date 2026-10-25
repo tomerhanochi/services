@@ -1,7 +1,5 @@
 use file_server_core::prelude::{Capabilities, Entry, EntryKind, Location, Metadata};
-use htmlb::RunTimeHtmlSizeHint;
 use htmlb::prelude::*;
-use htmlb_components::action::{Download, Link};
 use htmlb_components::prelude::*;
 
 use super::{Date, Size};
@@ -12,7 +10,7 @@ use crate::urls::{Href, Route};
 #[derive(Clone, Copy)]
 pub struct Details(pub Metadata);
 
-impl htmlb::Component for Details {
+impl Component for Details {
     fn render(self) -> impl IntoHtml {
         match self.0.kind {
             EntryKind::Directory => Either::Left("Folder"),

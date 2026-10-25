@@ -3,7 +3,7 @@
 use std::fmt::Write;
 
 use file_server_core::prelude::{EntryName, Location, MountName, RelPath};
-use htmlb::{AttrValue, CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
+use htmlb::prelude::{AttrValue, CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
 
 pub const HOME: &str = "/";
 pub const LOGIN: &str = "/login";

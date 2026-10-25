@@ -3,7 +3,8 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use crate::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint, escape, num};
+use crate::size_hint::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
+use crate::{escape, num};
 
 /// An attribute name, as a type. `PREFIX` (` name="`) and `BARE` (` name`) are
 /// concatenated at compile time, so writing one is a single `push_str`.
@@ -265,7 +266,7 @@ impl<V: AttrValue> AttrValue for Option<V> {
 }
 
 /// Tuples concatenate: `.href(("/files/", name))`. Present if any part is present.
-/// (`class` takes a [`ClassList`](crate::ClassList) instead, whose tuples are space-separated.)
+/// (`class` takes a [`ClassList`](crate::prelude::ClassList) instead, whose tuples are space-separated.)
 macro_rules! tuple_values {
     ($($t:ident)+) => {
         #[allow(non_snake_case)]
@@ -428,6 +429,8 @@ pub mod enums {
 
 /// Attribute name types, one per distinct attribute name.
 pub mod keys {
+    use super::AttrKey;
+
     macro_rules! attr_keys {
         ($($key:ident $(= $name:literal)?),* $(,)?) => {
             $(attr_keys!(@one $key $(= $name)?);)*
@@ -435,7 +438,7 @@ pub mod keys {
         (@one $key:ident) => {
             #[allow(non_camel_case_types)]
             pub struct $key;
-            impl crate::AttrKey for $key {
+            impl AttrKey for $key {
                 const PREFIX: &'static str = concat!(" ", stringify!($key), "=\"");
                 const BARE: &'static str = concat!(" ", stringify!($key));
             }
@@ -443,7 +446,7 @@ pub mod keys {
         (@one $key:ident = $name:literal) => {
             #[allow(non_camel_case_types)]
             pub struct $key;
-            impl crate::AttrKey for $key {
+            impl AttrKey for $key {
                 const PREFIX: &'static str = concat!(" ", $name, "=\"");
                 const BARE: &'static str = concat!(" ", $name);
             }

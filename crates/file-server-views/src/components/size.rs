@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use htmlb::{Component, IntoHtml, RunTimeHtmlSizeHint};
+use htmlb::prelude::{Component, IntoHtml, RunTimeHtmlSizeHint};
 
 /// `512 B`, `1.5 KB`, `12 MB`, ... (powers of 1000, as file managers on phones show them).
 #[derive(Clone, Copy)]
@@ -67,7 +67,7 @@ impl fmt::Display for Size {
 
 impl Component for Size {
     fn render(self) -> impl IntoHtml {
-        htmlb::display(self)
+        htmlb::prelude::display(self)
     }
 }
 impl RunTimeHtmlSizeHint for Size {
@@ -83,7 +83,6 @@ impl RunTimeHtmlSizeHint for Size {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use htmlb::CompileTimeHtmlSizeHint;
 
     #[test]
     fn sizes() {

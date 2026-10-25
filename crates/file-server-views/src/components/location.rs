@@ -1,5 +1,4 @@
 use file_server_core::prelude::{EntryName, Location, MountName};
-use htmlb::RunTimeHtmlSizeHint;
 use htmlb::prelude::*;
 use htmlb_components::prelude::*;
 
@@ -15,7 +14,7 @@ pub fn location_title(at: &Location) -> &str {
 #[derive(Clone, Copy)]
 pub struct Breadcrumb<'a>(pub &'a Location);
 
-impl htmlb::Component for Breadcrumb<'_> {
+impl Component for Breadcrumb<'_> {
     fn render(self) -> impl IntoHtml {
         path(self.0.mount.as_str(), self.0.path.components())
     }
@@ -38,7 +37,7 @@ impl RunTimeHtmlSizeHint for Breadcrumb<'_> {
 #[derive(Clone, Copy)]
 pub struct Ancestors<'a>(pub &'a Location);
 
-impl htmlb::Component for Ancestors<'_> {
+impl Component for Ancestors<'_> {
     fn render(self) -> impl IntoHtml {
         let components = self.0.path.components();
         components

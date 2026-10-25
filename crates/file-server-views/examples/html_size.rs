@@ -1,6 +1,6 @@
 use file_server_core::prelude::*;
 use file_server_views::prelude::*;
-use htmlb::IntoHtml;
+use htmlb::prelude::IntoHtml;
 use std::{fs, path::PathBuf, time::SystemTime};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

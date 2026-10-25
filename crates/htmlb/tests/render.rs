@@ -159,7 +159,7 @@ fn iterators() {
         "<ul><li>a</li><li>b&#60;</li><li>c</li></ul>"
     );
     // From<Iterator>
-    let iter: htmlb::IterHtml<_> = items.iter().map(|s| li().child(*s)).into();
+    let iter: IterHtml<_> = items.iter().map(|s| li().child(*s)).into();
     assert_eq!(
         ul().child(iter).to_html(),
         "<ul><li>a</li><li>b&#60;</li><li>c</li></ul>"
@@ -223,13 +223,10 @@ fn tables_selects_lists() {
 #[test]
 fn min_len_is_computed_from_the_type() {
     // <a class="…"><b>…</b></a> with unknown string contents
-    type View = htmlb::El<
-        htmlb::tag::a,
-        (
-            (),
-            htmlb::Attr<htmlb::attr::class, htmlb::Classes<&'static str>>,
-        ),
-        ((), htmlb::El<htmlb::tag::b, (), ((), &'static str)>),
+    type View = El<
+        tag::a,
+        ((), Attr<attr::class, Classes<&'static str>>),
+        ((), El<tag::b, (), ((), &'static str)>),
     >;
     assert_eq!(
         <View as CompileTimeHtmlSizeHint>::SIZE_HINT,

@@ -1,7 +1,8 @@
 //! Containers: tuples, `Option`, `Vec`, arrays, `Either`, and iterators. (`Box` is in
 //! [`component`](crate::component).)
 
-use crate::{CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint};
+use crate::into_html::IntoHtml;
+use crate::size_hint::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
 
 impl CompileTimeHtmlSizeHint for () {
     const SIZE_HINT: usize = 0;

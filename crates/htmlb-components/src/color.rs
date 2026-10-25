@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use htmlb::{AttrValue, CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint};
+use htmlb::prelude::{AttrValue, CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint};
 
 /// An opaque sRGB color.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]

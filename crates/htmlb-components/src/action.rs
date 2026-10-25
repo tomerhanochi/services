@@ -1,7 +1,6 @@
 //! What an interactive component does, and therefore which element it is.
 
 use htmlb::prelude::*;
-use htmlb::{AttrValue, ClassList};
 
 /// Renders an interactive component as the element that natively does what it should:
 /// `<a href>` for navigation, `<button type=submit>` for forms, `<button popovertarget>`

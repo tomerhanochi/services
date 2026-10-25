@@ -4,11 +4,12 @@ use std::marker::PhantomData;
 
 use crate::attrs::{Attr, AttrValue, Attribute, BoolAttr, DynAttr, Typed, enums::*, keys as attr};
 use crate::class::{ClassList, Classes};
-use crate::{CompileTimeHtmlSizeHint, IntoHtml, RunTimeHtmlSizeHint};
+use crate::into_html::IntoHtml;
+use crate::size_hint::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
 
 /// What an element does with children.
 pub mod kind {
-    /// Any [`IntoHtml`](crate::IntoHtml) children, text escaped.
+    /// Any [`IntoHtml`](crate::prelude::IntoHtml) children, text escaped.
     pub struct Normal;
     /// No children and no closing tag: `<img>`, `<br>`, `<input>`, ...
     pub struct Void;

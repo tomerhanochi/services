@@ -1,6 +1,5 @@
-use crate::Unset;
+use crate::prelude::Unset;
 use htmlb::prelude::*;
-use htmlb::{AttrValue, Component, RunTimeHtmlSizeHint};
 
 const SHEET: &str = "md-sheet";
 const SHEET_HANDLE: &str = "md-sheet__handle";

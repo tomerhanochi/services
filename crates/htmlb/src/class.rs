@@ -2,7 +2,9 @@
 
 use std::borrow::Cow;
 
-use crate::{AttrValue, CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint, escape};
+use crate::attrs::AttrValue;
+use crate::escape;
+use crate::size_hint::{CompileTimeHtmlSizeHint, RunTimeHtmlSizeHint};
 
 /// One or more class names. Tuples are lists: `.class(("btn", active.then_some("active")))`
 /// writes `btn active`, or `btn` when inactive. Empty and `None` parts are skipped, so no

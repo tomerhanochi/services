@@ -1,6 +1,5 @@
-use crate::Unset;
+use crate::prelude::Unset;
 use htmlb::prelude::*;
-use htmlb::{Component, RunTimeHtmlSizeHint};
 
 macro_rules! text_component {
     ($name:ident, $constructor:ident, $tag:ident, $class:literal, $description:literal) => {

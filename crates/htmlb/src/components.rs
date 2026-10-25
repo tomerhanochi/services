@@ -1,6 +1,12 @@
 //! Common document components with consistent metadata and resource attributes.
 
-use crate::{IntoHtml, prelude::*};
+use crate::attrs::{Attr, keys as attr};
+use crate::elements::{
+    El,
+    constructors::{link, meta, script as script_element},
+    tag,
+};
+use crate::into_html::IntoHtml;
 
 /// The standard responsive viewport declaration, including safe-area support.
 pub fn viewport() -> impl IntoHtml {
@@ -15,7 +21,7 @@ pub fn color_scheme() -> impl IntoHtml {
 }
 
 /// `<link rel="…">`, before its `href`.
-type Link = crate::El<crate::tag::link, ((), crate::Attr<crate::attr::rel, &'static str>), ()>;
+type Link = El<tag::link, ((), Attr<attr::rel, &'static str>), ()>;
 
 /// A stylesheet link: give it an `href`.
 pub fn stylesheet() -> Link {
@@ -37,4 +43,3 @@ pub fn script(src: impl AsRef<str>, sha: impl AsRef<str>) -> impl IntoHtml {
 }
 
 use crate::attrs::enums::CrossOrigin;
-use crate::elements::constructors::script as script_element;

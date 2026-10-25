@@ -3,7 +3,7 @@
 use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use htmlb::{Component, IntoHtml, RunTimeHtmlSizeHint};
+use htmlb::prelude::{Component, IntoHtml, RunTimeHtmlSizeHint};
 
 /// `2024-05-01` (UTC).
 #[derive(Clone, Copy)]
@@ -22,7 +22,7 @@ impl fmt::Display for Date {
 
 impl Component for Date {
     fn render(self) -> impl IntoHtml {
-        htmlb::display(self)
+        htmlb::prelude::display(self)
     }
 }
 impl RunTimeHtmlSizeHint for Date {
@@ -50,7 +50,6 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
-    use htmlb::CompileTimeHtmlSizeHint;
 
     #[test]
     fn dates() {

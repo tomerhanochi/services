@@ -1,6 +1,6 @@
 //! Theme values: the schemes and typefaces chosen by an application.
 
-use crate::{Scheme, Typefaces};
+use crate::prelude::{Scheme, Typefaces};
 
 /// Everything that varies between apps: color schemes and typefaces. The remaining MD3
 /// tokens are fixed by the component library and exposed as CSS custom properties.

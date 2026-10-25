@@ -1,5 +1,4 @@
 use file_server_core::prelude::Location;
-use htmlb::AttrValue;
 use htmlb::prelude::*;
 use htmlb_components::prelude::*;
 

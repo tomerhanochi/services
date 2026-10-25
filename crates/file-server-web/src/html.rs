@@ -1,5 +1,5 @@
 use axum::response::{IntoResponse, Response};
-use htmlb::IntoHtml;
+use htmlb::prelude::IntoHtml;
 
 pub(crate) struct Html<T>(pub T);
 impl<T: IntoHtml> IntoResponse for Html<T> {

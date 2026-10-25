@@ -67,7 +67,9 @@ impl Server {
                 files: FileService::new(store, access),
                 auth: setup.authenticator,
             }),
-            css: Arc::new(htmlb_components::css::css(&htmlb_components_theme::THEME)),
+            css: Arc::new(htmlb_components::prelude::css(
+                &htmlb_components_theme::prelude::THEME,
+            )),
             public_origin: config.public_origin,
             oidc_enabled: setup.oidc.is_some(),
         };

@@ -1,6 +1,5 @@
-use crate::Unset;
+use crate::prelude::Unset;
 use htmlb::prelude::*;
-use htmlb::{Component, RunTimeHtmlSizeHint};
 
 const TOP_APP_BAR: &str = "md-top-app-bar";
 const TOP_APP_BAR_NAVIGATION: &str = "md-top-app-bar__navigation";
